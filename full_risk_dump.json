@@ -1,0 +1,11 @@
+{
+  "zip_code": "94086",
+  "census_tract": null,
+  "fema_raw": {
+    "error": "No census tract found"
+  },
+  "census_raw": "SKIPPED",
+  "census_error": {
+    "error": "Census fetch failed: Expecting value: line 2 column 1 (char 1)"
+  }
+}
