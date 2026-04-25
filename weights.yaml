@@ -1,0 +1,186 @@
+# Insurance Readiness Score — tunable configuration.
+# Edit weights/thresholds here without touching code.
+
+# ---- Pillar weights (must sum to 1.0) ----
+pillars:
+  operational:
+    weight: 0.20
+    features:
+      industry_risk_tier: 0.30
+      business_maturity_score: 0.20
+      revenue_per_employee: 0.15
+      total_employee_count: 0.10
+      operational_complexity_score: 0.25
+
+  claims_financial:
+    weight: 0.25
+    features:
+      claim_frequency_rate: 0.30
+      average_claim_severity: 0.15
+      loss_ratio_estimate: 0.15
+      financial_stability_flag: 0.20
+      claims_open_ratio: 0.10
+      prior_insurance_stability: 0.10
+
+  property_location:
+    weight: 0.25
+    features:
+      effective_building_age: 0.15
+      property_protection_score: 0.25
+      location_hazard_index: 0.20
+      fire_protection_rating: 0.25
+      premises_ownership_status: 0.05
+      building_quality_score: 0.10   # fed by Claude vision later; ignored if missing
+
+  cyber_safety:
+    weight: 0.20
+    features:
+      cyber_readiness_score: 0.25
+      safety_culture_indicator: 0.40
+      cyber_risk_posture: 0.35
+
+  documentation_completeness:
+    weight: 0.10
+    features: {}    # computed from raw-feature presence, see `documentation` below
+
+# ---- Per-feature normalization to [0,1] (1 = best for insurability) ----
+# types: passthrough | categorical | piecewise | inverse_clip
+normalization:
+  industry_risk_tier:
+    type: categorical
+    map: {Low: 1.0, Medium: 0.6, High: 0.25}
+    default: 0.5
+  business_maturity_score:                # raw years_in_business
+    type: piecewise
+    points: [[0, 0.1], [1, 0.4], [3, 0.7], [10, 1.0]]
+  revenue_per_employee:
+    type: piecewise
+    points: [[0, 0.2], [50000, 0.6], [150000, 0.9], [500000, 1.0], [2000000, 0.7]]
+  total_employee_count:
+    type: piecewise
+    points: [[0, 0.3], [5, 0.8], [50, 1.0], [500, 0.8]]
+  operational_complexity_score: {type: passthrough}
+
+  claim_frequency_rate:
+    type: inverse_clip
+    threshold: 2.0                         # 0/yr → 1.0, ≥2/yr → 0.0
+  average_claim_severity:
+    type: inverse_clip
+    threshold: 100000
+  loss_ratio_estimate:
+    type: inverse_clip
+    threshold: 1.0
+  financial_stability_flag: {type: passthrough}
+  claims_open_ratio:
+    type: inverse_clip
+    threshold: 1.0
+  prior_insurance_stability: {type: passthrough}
+
+  effective_building_age:
+    type: piecewise
+    points: [[0, 1.0], [10, 0.9], [30, 0.6], [60, 0.3], [100, 0.1]]
+  property_protection_score: {type: passthrough}
+  location_hazard_index: {type: passthrough}
+  fire_protection_rating: {type: passthrough}
+  premises_ownership_status: {type: passthrough}
+  building_quality_score: {type: passthrough}
+
+  cyber_readiness_score: {type: passthrough}
+  safety_culture_indicator: {type: passthrough}
+  cyber_risk_posture: {type: passthrough}
+
+# ---- Knockouts: hard caps on the composite when underwriter deal-breakers are present ----
+# Only the lowest cap among triggered rules applies.
+knockouts:
+  - id: declined_unknown_remediation
+    when:
+      prior_coverage_declined: true
+      decline_remediated: {in: [null, false]}
+    cap: 60
+    explanation: "Coverage was previously declined and remediation status is unknown or unaddressed."
+    remediation: "Disclose the reason for prior decline and the steps taken to address it."
+
+  - id: declined_remediated_no_evidence
+    when:
+      prior_coverage_declined: true
+      decline_remediated: true
+      decline_evidence_provided: {in: [null, false]}
+    cap: 75
+    explanation: "Prior decline remediated, but no supporting evidence has been uploaded."
+    remediation: "Upload remediation documentation (inspection reports, corrective work, etc.)."
+
+  - id: many_open_claims
+    when:
+      open_claims_count: {gte: 3}
+    cap: 60
+    explanation: "Three or more open claims indicate active loss exposure."
+    remediation: "Resolve or close pending claims with the carrier/broker."
+
+# ---- Documentation completeness ----
+documentation:
+  required_features:
+    - business_name
+    - entity_type
+    - years_in_business
+    - naics_code
+    - physical_address
+    - annual_revenue
+    - employee_count_ft
+    - total_claims_count
+    - prior_carrier_name
+    - building_construction_type
+    - building_year_built
+    - primary_zip_code
+    - fire_alarm_present
+    - sprinkler_system_present
+    - mfa_implemented
+    - osha_compliance
+  weights:                                # underwriter-importance multiplier (default 1.0)
+    annual_revenue: 2.0
+    total_claims_count: 2.0
+    naics_code: 2.0
+    building_construction_type: 1.5
+    primary_zip_code: 1.5
+
+# ---- Action templates surfaced as recommendations when a feature scores low ----
+actions:
+  industry_risk_tier:
+    action: "Industry is classified high-risk and cannot be changed. Offset with stronger safety and cyber controls."
+  business_maturity_score:
+    action: "Business is young; build operating history and document continuity plans."
+  revenue_per_employee:
+    action: "Provide complete revenue and headcount; revisit staffing efficiency."
+  total_employee_count:
+    action: "Provide full FT/PT headcount."
+  operational_complexity_score:
+    action: "Clarify scope of operations; document procedures for installation/service work."
+  claim_frequency_rate:
+    action: "Investigate root causes of repeat claims; institute documented preventive measures."
+  average_claim_severity:
+    action: "Review high-severity claim drivers; implement loss-prevention controls."
+  loss_ratio_estimate:
+    action: "Loss ratio is high. Demonstrate post-loss corrective actions before renewal."
+  financial_stability_flag:
+    action: "Improve business credit; address any prior decline with documentation."
+  claims_open_ratio:
+    action: "Work with carrier/broker to close or resolve open claims."
+  prior_insurance_stability:
+    action: "Provide full prior carrier history with policy dates; explain any coverage gaps."
+  effective_building_age:
+    action: "Document recent renovations (roof, electrical, plumbing) to reflect true condition."
+  property_protection_score:
+    action: "Upgrade construction or install central-station alarm + sprinklers."
+  location_hazard_index:
+    action: "Location is in a higher-hazard ZIP; offset with stronger physical security and fire protection."
+  fire_protection_rating:
+    action: "Install/document fire alarm, sprinklers, extinguishers; confirm distance to nearest station."
+  premises_ownership_status:
+    action: "Provide lease agreement and confirm landlord-required coverages."
+  building_quality_score:
+    action: "Upload current photos (interior, exterior, storage) so the system can score building quality."
+  cyber_readiness_score:
+    action: "Enable MFA on admin accounts; set up automated off-site backups."
+  safety_culture_indicator:
+    action: "Adopt a written safety program; schedule recurring employee safety training."
+  cyber_risk_posture:
+    action: "Add an incident response plan and third-party vendor security review process."
