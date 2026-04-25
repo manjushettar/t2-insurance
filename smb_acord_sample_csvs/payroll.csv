@@ -1,0 +1,15 @@
+employee_id,job_title,employment_type,annual_wages,hours_per_week,department,location_id
+E001,Owner / General Manager,FT,115000,45,Management,LOC-1
+E002,Operations Manager,FT,88000,40,Operations,LOC-1
+E003,Office Administrator,FT,56000,40,Administration,LOC-1
+E004,Customer Service Representative,FT,52000,40,Customer Service,LOC-1
+E005,Sales Representative,FT,68000,40,Sales,LOC-1
+E006,Lead HVAC Technician,FT,82000,40,Field Operations,LOC-1
+E007,HVAC Technician,FT,74000,40,Field Operations,LOC-1
+E008,HVAC Technician,FT,72000,40,Field Operations,LOC-1
+E009,HVAC Technician,FT,71000,40,Field Operations,LOC-2
+E010,HVAC Apprentice,FT,52000,40,Field Operations,LOC-2
+E011,Warehouse Coordinator,FT,54000,40,Warehouse,LOC-2
+E012,Bookkeeper,PT,28000,20,Finance,LOC-1
+E013,Part-Time Dispatcher,PT,26000,22,Operations,LOC-1
+E014,Seasonal Installer Helper,Contractor,18000,15,Field Operations,LOC-2

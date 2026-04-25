@@ -1,0 +1,4 @@
+claim_id,date,incident_type,amount_paid,status,description,amount_reserved,location_id
+CLM-001,2023-08-14,Property Damage,6200.0,closed,Technician accidentally damaged customer drywall during equipment installation,0.0,LOC-1
+CLM-002,2024-05-22,Vehicle / Equipment Damage,3800.0,closed,Service van equipment rack damage during minor backing incident,0.0,LOC-2
+CLM-003,2025-09-09,Customer Slip and Fall,0.0,open,Customer alleged slip near work area during commercial maintenance visit,12000.0,LOC-1
