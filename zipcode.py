@@ -1,4 +1,25 @@
+import os
+import math
+
 import requests
+
+
+def load_env_var(key, env_path=".env"):
+    """
+    Loads a single environment variable from a .env file.
+    Falls back to os.environ if the key is not present in the file.
+    """
+    if os.path.exists(env_path):
+        with open(env_path, "r", encoding="utf-8") as file:
+            for line in file:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                env_key, env_value = line.split("=", 1)
+                if env_key.strip() == key:
+                    return env_value.strip().strip('"').strip("'")
+
+    return os.environ.get(key)
 
 def get_zipcode_data(zip_code, census_api_key):
     """
@@ -61,6 +82,11 @@ def get_zipcode_data(zip_code, census_api_key):
             "vacant_units": int(result["B25002_003E"]),
         }
 
+    def log_scale(value, max_value):
+        if value <= 0 or max_value <= 1:
+            return 0.0
+        return min(math.log(value) / math.log(max_value), 1.0)
+
     # -----------------------------
     # 2. TRANSFORM → INSURANCE FEATURES
     # -----------------------------
@@ -75,33 +101,33 @@ def get_zipcode_data(zip_code, census_api_key):
         if total_units == 0 or population == 0:
             return {"error": "invalid_data"}
 
-        # Core derived features
-        exposure = population / total_units
+        # Core derived features for modeling.
+        exposure = min((population / total_units) / 5, 1.0)
         vacancy_rate = vacant / total_units
         education_rate = (census["bachelors"] + census["masters"]) / population
+        stability = ((1 - vacancy_rate) + education_rate) / 2
 
-        severity = census["median_home_value"]
-        income = census["median_income"]
-
-        # Normalized features (for model stability)
-        normalized = {
-            "exposure": exposure / 5,
-            "vacancy_rate": vacancy_rate,
-            "stability": (1 - vacancy_rate) + education_rate,
-            "severity": severity / 1_000_000,
-            "income": income / 100_000
-        }
+        severity = log_scale(census["median_home_value"], 3_000_000)
+        income = log_scale(census["median_income"], 300_000)
+        rent = log_scale(census["median_rent"], 6_000)
 
         return {
             "raw_metrics": census,
             "risk_features": {
                 "area_exposure": exposure,
                 "vacancy_risk": vacancy_rate,
-                "area_stability": (1 - vacancy_rate) + education_rate,
+                "area_stability": stability,
                 "loss_severity": severity,
                 "income_level": income
             },
-            "normalized_features": normalized
+            "normalized_features": {
+                "exposure": exposure,
+                "vacancy_rate": vacancy_rate,
+                "stability": stability,
+                "severity": severity,
+                "income": income,
+                "rent": rent,
+            }
         }
 
     # -----------------------------
@@ -114,3 +140,12 @@ def get_zipcode_data(zip_code, census_api_key):
         "zip_code": zip_code,
         "area_profile": features
     }
+
+
+if __name__ == "__main__":
+    api_key = load_env_var("CENSUS_API_KEY")
+    if not api_key:
+        raise ValueError("Missing CENSUS_API_KEY in .env or environment variables.")
+
+    zipcode_data = get_zipcode_data("90210", api_key)
+    print(zipcode_data)
