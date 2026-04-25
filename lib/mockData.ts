@@ -1,4 +1,4 @@
-import { AppState, BusinessProfile, EvidenceDocument, LocationRisk, ScoreTrendPoint } from "@/lib/types";
+import { AppState, BusinessProfile, EvidenceDocument, PropertyProfile, ScoreTrendPoint } from "@/lib/types";
 
 const today = new Date();
 const iso = (d: Date) => d.toISOString();
@@ -8,33 +8,52 @@ export const oaklandSunriseProfile: BusinessProfile = {
   businessName: "Oakland Sunrise Cafe",
   businessType: "restaurant",
   legalEntityName: "Oakland Sunrise Cafe LLC",
-  yearsInBusiness: 6,
   description:
     "Neighborhood cafe with breakfast and lunch service, dine-in and takeout. No alcohol service. Limited catering for local offices.",
+  operationsDescription:
+    "Single-location cafe with dine-in, takeout, and limited local catering. No alcohol sales. Prep and cooking are performed on-site with standard kitchen suppression controls.",
   address: "1421 Broadway",
-  zipCode: "94612",
+  city: "Oakland",
   state: "CA",
+  zipCode: "94612",
+  naicsCode: "722513",
+  industryRiskTier: "moderate",
+  yearsInBusiness: 6,
   annualRevenue: 750000,
+  annualPremiumEstimate: 18000,
   payroll: 260000,
   employeeCount: 8,
+  multipleInsureds: false,
+  installServiceMix: "Dine-in / takeout / catering",
   customerFootTraffic: true,
   offsiteWork: false,
   vehiclesUsed: false,
   subcontractorsUsed: false,
   storesCustomerData: true,
-  priorClaims: ["Slip-and-fall claim reported two years ago."],
   lastUpdatedAt: iso(today)
 };
 
-export const oaklandLocationRisk: LocationRisk = {
+export const oaklandProperty: PropertyProfile = {
+  effectiveBuildingAge: 28,
+  renovationYear: 2019,
+  constructionType: "Masonry non-combustible",
+  alarmCentralStation: true,
+  sprinklered: true,
+  propertyProtectionScore: 74,
+  locationHazardIndex: 48,
+  fireProtectionRating: 78,
+  distanceToFireStationMiles: 1.2,
+  distanceToHydrantFeet: 220,
+  premisesOwnershipStatus: "leased",
+  buildingQualityScore: 72,
   zipCode: "94612",
   naturalHazardLevel: "medium",
   floodRisk: "low",
   wildfireRisk: "medium",
-  severeWeatherRisk: "high",
+  severeWeatherRisk: "medium",
   crimeOrTheftRisk: "medium",
   explanation:
-    "Placeholder location profile: moderate property and wildfire exposure with elevated severe weather considerations in regional modeling."
+    "Urban infill cafe with manageable flood exposure, moderate regional wildfire influence, and generally acceptable fire protection access."
 };
 
 export const oaklandEvidence: EvidenceDocument[] = [
@@ -48,17 +67,6 @@ export const oaklandEvidence: EvidenceDocument[] = [
     extractedFields: ["Address", "Lease term", "Landlord details"],
     underwritingRelevance: "Confirms occupancy and control of premises.",
     confidenceImpact: 6
-  },
-  {
-    id: "doc-description",
-    businessId: oaklandSunriseProfile.id,
-    documentType: "business-description",
-    name: "Basic Business Description",
-    uploadedAt: iso(new Date(today.getTime() - 1000 * 60 * 60 * 24 * 20)),
-    status: "uploaded",
-    extractedFields: ["Operations summary"],
-    underwritingRelevance: "Supports class code alignment and exposure understanding.",
-    confidenceImpact: 4
   },
   {
     id: "doc-loss-runs",
@@ -104,7 +112,45 @@ export const oaklandScoreTrend: ScoreTrendPoint[] = [
 
 export const oaklandInitialState: AppState = {
   profile: oaklandSunriseProfile,
-  locationRisk: oaklandLocationRisk,
+  claimsFinancial: {
+    priorClaims: ["Slip-and-fall claim reported two years ago."],
+    totalClaimsCount: 1,
+    claimsOpenCount: 0,
+    claimFrequencyRate: 0.17,
+    averageClaimSeverity: 12500,
+    lossRatioEstimate: 0.46,
+    financialStabilityFlag: "stable",
+    priorInsuranceStability: "stable",
+    priorInsuranceDeclined: false,
+    coverageGapMonths: 0,
+    carrierChangesLast5Years: 1,
+    yearsSinceLastClaim: 2
+  },
+  property: oaklandProperty,
+  cyberSafety: {
+    cyberReadinessScore: 68,
+    safetyCultureIndicator: 72,
+    cyberRiskPosture: 64,
+    mfaEnabled: true,
+    regularBackups: true,
+    incidentResponsePlan: false,
+    vendorRiskManagement: false,
+    oshaCompliant: true,
+    formalSafetyProgram: true,
+    employeeTrainingCadence: "quarterly"
+  },
+  documentation: {
+    expectedFeatureCount: 33,
+    completedFeatureCount: 29,
+    expectedDocuments: [
+      "Current Lease Agreement",
+      "Loss Runs",
+      "Current Payroll Report",
+      "Fire Suppression Inspection"
+    ],
+    providedDocuments: ["Current Lease Agreement"],
+    missingDocuments: ["Loss Runs", "Current Payroll Report", "Fire Suppression Inspection"]
+  },
   evidence: oaklandEvidence,
   timeline: [
     {
@@ -126,26 +172,6 @@ export const oaklandInitialState: AppState = {
       scoreImpact: 0,
       confidenceImpact: 5,
       category: "document"
-    },
-    {
-      id: "ev-3",
-      businessId: oaklandSunriseProfile.id,
-      date: "2026-02-20",
-      title: "Added payroll estimate",
-      description: "Entered payroll and employee count details.",
-      scoreImpact: 6,
-      confidenceImpact: 3,
-      category: "business-change"
-    },
-    {
-      id: "ev-4",
-      businessId: oaklandSunriseProfile.id,
-      date: "2026-03-12",
-      title: "Reported prior slip-and-fall claim",
-      description: "Recorded one claim from two years ago.",
-      scoreImpact: -5,
-      confidenceImpact: 0,
-      category: "risk-increase"
     }
   ],
   scoreTrend: oaklandScoreTrend,
@@ -158,31 +184,82 @@ export const bayBuildContractorState: AppState = {
     businessName: "BayBuild Contractors",
     businessType: "contractor",
     legalEntityName: "BayBuild Contractors Inc.",
-    yearsInBusiness: 9,
-    description:
-      "General contractor for mixed residential and small commercial remodel projects across the Bay Area.",
+    description: "General contractor for mixed residential and small commercial remodel projects across the Bay Area.",
+    operationsDescription:
+      "General contractor handling remodels with mixed self-perform and subcontracted scopes across residential and light commercial jobs.",
     address: "370 Townsend St",
-    zipCode: "94107",
+    city: "San Francisco",
     state: "CA",
+    zipCode: "94107",
+    naicsCode: "236220",
+    industryRiskTier: "high",
+    yearsInBusiness: 9,
     annualRevenue: 1200000,
+    annualPremiumEstimate: 42000,
     payroll: 420000,
     employeeCount: 14,
+    multipleInsureds: true,
+    installServiceMix: "Framing / finish / MEP coordination",
     customerFootTraffic: false,
     offsiteWork: true,
     vehiclesUsed: true,
     subcontractorsUsed: true,
     storesCustomerData: true,
-    priorClaims: [],
     lastUpdatedAt: iso(today)
   },
-  locationRisk: {
+  claimsFinancial: {
+    priorClaims: [],
+    totalClaimsCount: 0,
+    claimsOpenCount: 0,
+    claimFrequencyRate: 0,
+    averageClaimSeverity: 0,
+    lossRatioEstimate: 0.22,
+    financialStabilityFlag: "stable",
+    priorInsuranceStability: "minor_gaps",
+    priorInsuranceDeclined: false,
+    coverageGapMonths: 1,
+    carrierChangesLast5Years: 2,
+    yearsSinceLastClaim: null
+  },
+  property: {
+    effectiveBuildingAge: 14,
+    renovationYear: 2021,
+    constructionType: "Tilt-up concrete",
+    alarmCentralStation: true,
+    sprinklered: false,
+    propertyProtectionScore: 66,
+    locationHazardIndex: 40,
+    fireProtectionRating: 70,
+    distanceToFireStationMiles: 1.8,
+    distanceToHydrantFeet: 300,
+    premisesOwnershipStatus: "leased",
+    buildingQualityScore: 68,
     zipCode: "94107",
     naturalHazardLevel: "medium",
     floodRisk: "medium",
     wildfireRisk: "low",
     severeWeatherRisk: "medium",
     crimeOrTheftRisk: "medium",
-    explanation: "Placeholder location profile for contractor operations and equipment risk context."
+    explanation: "Contractor office and yard location with acceptable baseline hazards but meaningful equipment and off-site operational exposures."
+  },
+  cyberSafety: {
+    cyberReadinessScore: 62,
+    safetyCultureIndicator: 58,
+    cyberRiskPosture: 54,
+    mfaEnabled: true,
+    regularBackups: false,
+    incidentResponsePlan: false,
+    vendorRiskManagement: false,
+    oshaCompliant: true,
+    formalSafetyProgram: true,
+    employeeTrainingCadence: "monthly"
+  },
+  documentation: {
+    expectedFeatureCount: 33,
+    completedFeatureCount: 28,
+    expectedDocuments: ["Payroll by Job Role", "Subcontractor COIs", "Driver List"],
+    providedDocuments: ["Payroll by Job Role"],
+    missingDocuments: ["Subcontractor COIs", "Driver List"]
   },
   evidence: [
     {

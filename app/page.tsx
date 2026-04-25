@@ -5,10 +5,10 @@ export default function LandingPage() {
   return (
     <AppShell>
       <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-brand-600">InsureReady MVP</p>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-brand-600">Insuro</p>
         <h1 className="max-w-2xl text-4xl font-bold text-slate-900">Turn insurance prep into a year-round readiness system.</h1>
         <p className="mt-4 max-w-3xl text-slate-600">
-          InsureReady helps small businesses build a living underwriting profile with clear readiness scoring, confidence tracking, evidence locker management, and practical next steps.
+          Insuro helps small businesses build a living underwriting profile with clear readiness scoring, confidence tracking, evidence locker management, and practical next steps.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
           <Link href="/dashboard" className="rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white">View Demo Dashboard</Link>

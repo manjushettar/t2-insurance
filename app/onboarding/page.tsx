@@ -3,7 +3,7 @@ import OnboardingForm from "@/components/OnboardingForm";
 
 export default function OnboardingPage() {
   return (
-    <AppShell>
+    <AppShell compact>
       <OnboardingForm />
     </AppShell>
   );

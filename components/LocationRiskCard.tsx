@@ -1,21 +1,25 @@
-import { LocationRisk } from "@/lib/types";
+import { PropertyProfile } from "@/lib/types";
 import { Card, Pill } from "@/components/ui";
 
-export default function LocationRiskCard({ locationRisk }: { locationRisk: LocationRisk }) {
+export default function LocationRiskCard({ property }: { property: PropertyProfile }) {
   return (
-    <Card title="Location Risk Summary">
+    <Card title="Property And Location">
       <div className="mb-3 flex items-center gap-2 text-sm text-slate-600">
-        <span>ZIP {locationRisk.zipCode}</span>
-        <Pill text={`Hazard ${locationRisk.naturalHazardLevel}`} tone={locationRisk.naturalHazardLevel === "high" ? "danger" : locationRisk.naturalHazardLevel === "medium" ? "warn" : "good"} />
+        <span>ZIP {property.zipCode}</span>
+        <Pill
+          text={`Hazard ${property.naturalHazardLevel}`}
+          tone={property.naturalHazardLevel === "high" ? "danger" : property.naturalHazardLevel === "medium" ? "warn" : "good"}
+        />
       </div>
       <ul className="space-y-1 text-sm text-slate-600">
-        <li>Flood risk: {locationRisk.floodRisk}</li>
-        <li>Wildfire risk: {locationRisk.wildfireRisk}</li>
-        <li>Severe weather risk: {locationRisk.severeWeatherRisk}</li>
-        <li>Crime/theft risk: {locationRisk.crimeOrTheftRisk}</li>
+        <li>Effective building age: {property.effectiveBuildingAge} years</li>
+        <li>Construction: {property.constructionType}</li>
+        <li>Property protection score: {property.propertyProtectionScore}</li>
+        <li>Location hazard index: {property.locationHazardIndex}</li>
+        <li>Fire protection rating: {property.fireProtectionRating}</li>
+        <li>Ownership: {property.premisesOwnershipStatus}</li>
       </ul>
-      <p className="mt-3 text-xs text-slate-500">{locationRisk.explanation}</p>
-      <p className="mt-2 text-xs text-slate-400">Sources placeholder: FEMA NRI, NOAA Storm Events, Census ZIP Business Patterns, EPA EJSCREEN.</p>
+      <p className="mt-3 text-xs text-slate-500">{property.explanation}</p>
     </Card>
   );
 }

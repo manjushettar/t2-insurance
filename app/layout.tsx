@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "InsureReady MVP",
+  title: "Insuro",
   description: "Year-round insurance readiness platform for small businesses"
 };
 
