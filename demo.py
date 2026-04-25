@@ -1,5 +1,6 @@
 """Run a sample SMB through the readiness engine and print the result."""
 from engine import compute_score, render_contribution_table
+from context_engine import retrieve_context
 
 
 SAMPLE = {
@@ -83,7 +84,21 @@ def main():
 
     print("Contribution table:")
     print(render_contribution_table(r))
+    query = f"""
+    Claims: {SAMPLE.get("total_claims_count")}
+    MFA: {SAMPLE.get("mfa_implemented")}
+    Backups: {SAMPLE.get("data_backups_regular")}
+    Sprinkler: {SAMPLE.get("sprinkler_system_present")}
+    Fire Alarm: {SAMPLE.get("fire_alarm_present")}
+    """
 
+    rag_results = retrieve_context(query)
+
+    print("\nAI Context Used:")
+
+    for score, doc in rag_results:
+        print(f"\nSource: {doc['source']}")
+        print(doc["text"])
 
 if __name__ == "__main__":
     main()
