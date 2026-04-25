@@ -3,41 +3,42 @@
 
 # ---- Pillar weights (must sum to 1.0) ----
 pillars:
-  operational:
-    weight: 0.20
+  operations:
+    weight: 0.25
     features:
       industry_risk_tier: 0.30
       business_maturity_score: 0.20
       revenue_per_employee: 0.15
       total_employee_count: 0.10
-      operational_complexity_score: 0.25
+      operational_complexity_score: 0.10
+      work_type_mix: 0.15
 
-  claims_financial:
-    weight: 0.25
+  claims_experience:
+    weight: 0.22
     features:
-      claim_frequency_rate: 0.30
-      average_claim_severity: 0.15
-      loss_ratio_estimate: 0.15
-      financial_stability_flag: 0.20
-      claims_open_ratio: 0.10
-      prior_insurance_stability: 0.10
+      claim_frequency_rate: 0.40
+      average_claim_severity: 0.25
+      loss_ratio_estimate: 0.20
+      claims_open_ratio: 0.15
 
-  property_location:
-    weight: 0.25
+  financial_carrier_standing:
+    weight: 0.10
     features:
-      effective_building_age: 0.15
-      property_protection_score: 0.25
-      location_hazard_index: 0.20
-      fire_protection_rating: 0.25
+      financial_stability_flag: 0.60
+      prior_insurance_stability: 0.40
+
+  premises_location:
+    weight: 0.33
+    features:
+      property_protection_score: 0.22
+      fire_protection_rating: 0.22
+      effective_building_age: 0.13
+      area_vacancy_safety: 0.10
+      area_income_level: 0.08
+      self_reported_condition: 0.08
+      area_stability: 0.07
       premises_ownership_status: 0.05
-      building_quality_score: 0.10   # fed by Claude vision later; ignored if missing
-
-  cyber_safety:
-    weight: 0.20
-    features:
-      cyber_readiness_score: 0.25
-      safety_culture_indicator: 0.40
-      cyber_risk_posture: 0.35
+      location_hazard_index: 0.05    # placeholder for future FEMA / crime data
 
   documentation_completeness:
     weight: 0.10
@@ -60,6 +61,9 @@ normalization:
     type: piecewise
     points: [[0, 0.3], [5, 0.8], [50, 1.0], [500, 0.8]]
   operational_complexity_score: {type: passthrough}
+  work_type_mix:                          # % installation/service work; lower = lower hazard
+    type: piecewise
+    points: [[0, 1.0], [25, 0.85], [50, 0.6], [75, 0.4], [100, 0.25]]
 
   claim_frequency_rate:
     type: inverse_clip
@@ -83,15 +87,50 @@ normalization:
   location_hazard_index: {type: passthrough}
   fire_protection_rating: {type: passthrough}
   premises_ownership_status: {type: passthrough}
-  building_quality_score: {type: passthrough}
-
-  cyber_readiness_score: {type: passthrough}
-  safety_culture_indicator: {type: passthrough}
-  cyber_risk_posture: {type: passthrough}
+  self_reported_condition: {type: passthrough}
+  area_vacancy_safety: {type: passthrough}
+  area_stability: {type: passthrough}
+  area_income_level: {type: passthrough}
 
 # ---- Knockouts: hard caps on the composite when underwriter deal-breakers are present ----
 # Only the lowest cap among triggered rules applies.
 knockouts:
+  - id: recent_bankruptcy
+    when:
+      bankruptcy_recent: true
+    cap: 50
+    explanation: "Bankruptcy filed within the last 5 years."
+    remediation: "Provide discharge documentation and demonstrate 5+ years of clean operating history."
+
+  - id: prior_cancellation_unremediated
+    when:
+      prior_cancellation: true
+      cancellation_remediated: {in: [null, false]}
+    cap: 65
+    explanation: "A prior policy was cancelled or non-renewed and the underlying issue has not been documented as remediated."
+    remediation: "Disclose the reason for cancellation and what changed (controls, procedures, ownership)."
+
+  - id: hazardous_exposures_disclosed
+    when:
+      hazardous_exposures_disclosed: true
+    cap: 60
+    explanation: "Operations include hazardous exposures (chemicals, flammables, heavy machinery, etc.) that require specialty underwriting."
+    remediation: "Document exposure controls, OSHA compliance, and request a specialty quote."
+
+  - id: foreign_operations
+    when:
+      foreign_operations: true
+    cap: 75
+    explanation: "Foreign operations disclosed; standard SMB markets typically require additional review."
+    remediation: "Provide a description of foreign exposure and any local coverage already in place."
+
+  - id: criminal_activity_disclosed
+    when:
+      criminal_activity_disclosed: true
+    cap: 40
+    explanation: "Criminal activity disclosed at the business or principal level."
+    remediation: "Most carriers will not quote. Specialty / non-standard markets only."
+
   - id: declined_unknown_remediation
     when:
       prior_coverage_declined: true
@@ -126,6 +165,7 @@ documentation:
     - physical_address
     - annual_revenue
     - employee_count_ft
+    - sales_percentage_installation_service
     - total_claims_count
     - prior_carrier_name
     - building_construction_type
@@ -133,8 +173,6 @@ documentation:
     - primary_zip_code
     - fire_alarm_present
     - sprinkler_system_present
-    - mfa_implemented
-    - osha_compliance
   weights:                                # underwriter-importance multiplier (default 1.0)
     annual_revenue: 2.0
     total_claims_count: 2.0
@@ -145,7 +183,7 @@ documentation:
 # ---- Action templates surfaced as recommendations when a feature scores low ----
 actions:
   industry_risk_tier:
-    action: "Industry is classified high-risk and cannot be changed. Offset with stronger safety and cyber controls."
+    action: "Industry is classified high-risk and cannot be changed. Offset with stronger physical controls and clean loss history."
   business_maturity_score:
     action: "Business is young; build operating history and document continuity plans."
   revenue_per_employee:
@@ -153,7 +191,9 @@ actions:
   total_employee_count:
     action: "Provide full FT/PT headcount."
   operational_complexity_score:
-    action: "Clarify scope of operations; document procedures for installation/service work."
+    action: "Clarify scope of operations; reduce additional named insureds where possible."
+  work_type_mix:
+    action: "High share of installation/service work increases hazard. Document procedures, training, and use of subcontractor agreements."
   claim_frequency_rate:
     action: "Investigate root causes of repeat claims; institute documented preventive measures."
   average_claim_severity:
@@ -176,11 +216,11 @@ actions:
     action: "Install/document fire alarm, sprinklers, extinguishers; confirm distance to nearest station."
   premises_ownership_status:
     action: "Provide lease agreement and confirm landlord-required coverages."
-  building_quality_score:
-    action: "Upload current photos (interior, exterior, storage) so the system can score building quality."
-  cyber_readiness_score:
-    action: "Enable MFA on admin accounts; set up automated off-site backups."
-  safety_culture_indicator:
-    action: "Adopt a written safety program; schedule recurring employee safety training."
-  cyber_risk_posture:
-    action: "Add an incident response plan and third-party vendor security review process."
+  self_reported_condition:
+    action: "Address building condition gaps: roof, water damage, electrical, exterior, or HVAC service. Misrepresentation here can void coverage."
+  area_vacancy_safety:
+    action: "Area shows elevated vacancy. Strengthen on-site security (alarms, lighting, monitoring) to offset."
+  area_stability:
+    action: "Neighborhood shows weaker stability indicators. Document on-site controls and after-hours protocols."
+  area_income_level:
+    action: "Lower-income area; reinforce property protections and document loss-prevention measures."

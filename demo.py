@@ -45,14 +45,19 @@ SAMPLE = {
     "leased_area": True,
     "square_footage": 1800,
 
-    # cyber & safety
-    "mfa_implemented": True,
-    "data_backups_regular": True,
-    "incident_response_plan": False,
-    "third_party_vendor_risk_management": False,
-    "formal_safety_program": True,
-    "employee_safety_training": True,
-    "osha_compliance": True,
+    # self-reported building condition (attested at intake)
+    "roof_replaced_recently": True,
+    "no_visible_water_damage": True,
+    "electrical_updated": True,
+    "exterior_well_maintained": True,
+    "hvac_serviced_recently": False,
+
+    # ACORD underwriting questions (all No = clean risk)
+    "bankruptcy_recent": False,
+    "prior_cancellation": False,
+    "hazardous_exposures_disclosed": False,
+    "foreign_operations": False,
+    "criminal_activity_disclosed": False,
 }
 
 

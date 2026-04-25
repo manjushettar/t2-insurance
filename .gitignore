@@ -19,6 +19,9 @@ env/
 *.key
 *.pem
 
+# Cached API responses
+.zip_cache.json
+
 # OS / editors
 .DS_Store
 Thumbs.db

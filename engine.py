@@ -20,6 +20,8 @@ from typing import Any
 
 import yaml
 
+from zip_lookup import get_area_features
+
 
 # ---------------------------------------------------------------------------
 # Result types
@@ -109,6 +111,7 @@ def derive_features(raw: dict) -> dict:
         d["total_employee_count"] = None
 
     d["operational_complexity_score"] = _complexity(raw)
+    d["work_type_mix"] = raw.get("sales_percentage_installation_service")
 
     # --- Claims & Financial ---
     tcc = raw.get("total_claims_count")
@@ -155,15 +158,16 @@ def derive_features(raw: dict) -> dict:
     d["location_hazard_index"]     = _location_hazard(raw.get("primary_zip_code"))
     d["fire_protection_rating"]    = _fire_protection(raw)
 
+    # Area-level features from Census API (cached). Missing key/network -> None.
+    area = get_area_features(raw.get("primary_zip_code"))
+    d["area_vacancy_safety"] = area["area_vacancy_safety"] if area else None
+    d["area_stability"]      = area["area_stability"]      if area else None
+    d["area_income_level"]   = area["area_income_level"]   if area else None
+
     leased = raw.get("leased_area")
     d["premises_ownership_status"] = (1.0 if leased is False else 0.7) if leased is not None else None
 
-    d["building_quality_score"] = raw.get("building_quality_score")    # placeholder for vision step
-
-    # --- Cyber & Safety ---
-    d["cyber_readiness_score"]    = _cyber_readiness(raw)
-    d["safety_culture_indicator"] = _safety_culture(raw, d.get("claim_frequency_rate"))
-    d["cyber_risk_posture"]       = _cyber_posture(raw)
+    d["self_reported_condition"] = _self_reported_condition(raw)
 
     return d
 
@@ -178,16 +182,14 @@ def _industry_tier(naics):
 
 
 def _complexity(raw):
-    keys = ["sales_percentage_installation_service", "number_of_members",
-            "additional_named_insureds", "description_of_operations"]
+    keys = ["number_of_members", "additional_named_insureds", "description_of_operations"]
     if not any(raw.get(k) is not None for k in keys):
         return None
     score = 0.0
-    if (raw.get("sales_percentage_installation_service") or 0) > 25: score += 0.4
-    if (raw.get("number_of_members") or 0) > 3:                      score += 0.2
-    if len(raw.get("additional_named_insureds") or []) > 1:          score += 0.2
-    if len((raw.get("description_of_operations") or "").split()) > 50: score += 0.2
-    return 1.0 - min(score, 1.0)                                     # low complexity is good
+    if (raw.get("number_of_members") or 0) > 3:                       score += 0.35
+    if len(raw.get("additional_named_insureds") or []) > 1:           score += 0.35
+    if len((raw.get("description_of_operations") or "").split()) > 50: score += 0.30
+    return 1.0 - min(score, 1.0)                                      # low complexity is good
 
 
 def _prior_stability(raw):
@@ -232,27 +234,21 @@ def _fire_protection(raw):
     return min(s, 1.0)
 
 
-def _cyber_readiness(raw):
-    if raw.get("mfa_implemented") is None and raw.get("data_backups_regular") is None:
+_CONDITION_KEYS = [
+    "roof_replaced_recently",        # roof replaced/repaired within last 15 years
+    "no_visible_water_damage",       # no visible water damage / mold / staining
+    "electrical_updated",            # electrical system updated since 2000
+    "exterior_well_maintained",      # exterior intact: no cracks, peeling, broken windows
+    "hvac_serviced_recently",        # HVAC serviced within last 24 months
+]
+
+
+def _self_reported_condition(raw):
+    """Average of self-reported yes/no condition checks. None if owner answered none."""
+    answered = [raw.get(k) for k in _CONDITION_KEYS if raw.get(k) is not None]
+    if not answered:
         return None
-    return (0.5 if raw.get("mfa_implemented") else 0.0) + (0.5 if raw.get("data_backups_regular") else 0.0)
-
-
-def _safety_culture(raw, claim_freq):
-    keys = ["formal_safety_program", "employee_safety_training", "osha_compliance"]
-    if not any(raw.get(k) is not None for k in keys):
-        return None
-    s = sum(0.3 for k in keys if raw.get(k))
-    if claim_freq is not None and claim_freq < 0.5: s += 0.1
-    return min(s, 1.0)
-
-
-def _cyber_posture(raw):
-    keys = ["mfa_implemented", "data_backups_regular",
-            "incident_response_plan", "third_party_vendor_risk_management"]
-    if not any(raw.get(k) is not None for k in keys):
-        return None
-    return sum(0.25 for k in keys if raw.get(k))
+    return sum(1 for v in answered if v) / len(answered)
 
 
 # ---------------------------------------------------------------------------
