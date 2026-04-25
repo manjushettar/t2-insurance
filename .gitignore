@@ -1,0 +1,36 @@
+# Claude Code local state
+.claude/
+nul
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Env / secrets
+.env
+.env.local
+*.key
+*.pem
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# Build / dist
+build/
+dist/
+*.egg
+
+# Data uploads (uncomment if user-uploaded photos/docs land here)
+# uploads/
+# *.zip
