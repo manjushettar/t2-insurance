@@ -34,3 +34,13 @@ dist/
 # Data uploads (uncomment if user-uploaded photos/docs land here)
 # uploads/
 # *.zip
+
+# Next.js / Node
+node_modules/
+.next/
+out/
+
+# Next.js / Node
+node_modules/
+.next/
+out/
