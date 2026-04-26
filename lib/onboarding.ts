@@ -239,21 +239,23 @@ export function buildInitialStateFromOnboarding(input: OnboardingInput): AppStat
   const id = `biz-${Date.now()}`;
   const priorClaims = splitList(input.priorClaims);
   const evidence = baselineEvidence(id, input);
-  const documentation = buildDocumentationProfile(input, evidence);
-
-  if (documentation.providedDocuments.length > 0) {
-    evidence.push({
-      id: `doc-existing-${Date.now()}`,
-      businessId: id,
-      documentType: "owner-supplied-list",
-      name: "Owner-supplied document inventory",
-      uploadedAt: new Date().toISOString(),
-      status: "uploaded",
-      extractedFields: documentation.providedDocuments,
-      underwritingRelevance: "Initial owner-declared evidence inventory.",
-      confidenceImpact: 4
-    });
+  const providedDocuments = splitList(input.documents);
+  if (providedDocuments.length > 0) {
+    evidence.push(
+      ...providedDocuments.map((name, index) => ({
+        id: `doc-upload-${Date.now()}-${index}`,
+        businessId: id,
+        documentType: "owner-upload",
+        name,
+        uploadedAt: new Date().toISOString(),
+        status: "uploaded" as const,
+        extractedFields: [],
+        underwritingRelevance: "Owner-uploaded onboarding document ready for parsing and semantic indexing.",
+        confidenceImpact: 4
+      }))
+    );
   }
+  const documentation = buildDocumentationProfile(input, evidence);
 
   const profile: BusinessProfile = {
     id,

@@ -33,17 +33,30 @@ async function replaceBusinessGraph(input) {
       vehiclesUsed: input.profile.vehiclesUsed,
       subcontractorsUsed: input.profile.subcontractorsUsed,
       storesCustomerData: input.profile.storesCustomerData,
-      priorClaims: JSON.stringify(input.profile.priorClaims),
+      priorClaims: input.claimsFinancial.priorClaims,
       renewalDate: new Date(input.renewalDate),
+      profileData: {
+        operationsDescription: input.profile.operationsDescription,
+        city: input.profile.city,
+        naicsCode: input.profile.naicsCode,
+        industryRiskTier: input.profile.industryRiskTier,
+        annualPremiumEstimate: input.profile.annualPremiumEstimate,
+        multipleInsureds: input.profile.multipleInsureds,
+        installServiceMix: input.profile.installServiceMix
+      },
+      claimsFinancialData: input.claimsFinancial,
+      propertyData: input.property,
+      cyberSafetyData: input.cyberSafety,
+      documentationData: input.documentation,
       locationRisk: {
         create: {
-          zipCode: input.locationRisk.zipCode,
-          naturalHazardLevel: input.locationRisk.naturalHazardLevel,
-          floodRisk: input.locationRisk.floodRisk,
-          wildfireRisk: input.locationRisk.wildfireRisk,
-          severeWeatherRisk: input.locationRisk.severeWeatherRisk,
-          crimeOrTheftRisk: input.locationRisk.crimeOrTheftRisk,
-          explanation: input.locationRisk.explanation
+          zipCode: input.property.zipCode,
+          naturalHazardLevel: input.property.naturalHazardLevel,
+          floodRisk: input.property.floodRisk,
+          wildfireRisk: input.property.wildfireRisk,
+          severeWeatherRisk: input.property.severeWeatherRisk,
+          crimeOrTheftRisk: input.property.crimeOrTheftRisk,
+          explanation: input.property.explanation
         }
       },
       evidence: {
@@ -53,10 +66,13 @@ async function replaceBusinessGraph(input) {
           name: doc.name,
           uploadedAt: doc.uploadedAt ? new Date(doc.uploadedAt) : null,
           status: doc.status,
-          extractedFields: JSON.stringify(doc.extractedFields || []),
+          extractedFields: doc.extractedFields || [],
           underwritingRelevance: doc.underwritingRelevance,
           confidenceImpact: doc.confidenceImpact
         }))
+      },
+      sourceDocuments: {
+        create: input.sourceDocuments || []
       },
       timeline: {
         create: input.timeline.map((event) => ({
@@ -83,9 +99,14 @@ async function replaceBusinessGraph(input) {
           propertyControls: s.propertyControls,
           operationalControls: s.operationalControls,
           locationContext: s.locationContext,
+          operationalScore: s.operationalScore,
+          claimsFinancialScore: s.claimsFinancialScore,
+          propertyLocationScore: s.propertyLocationScore,
+          cyberSafetyScore: s.cyberSafetyScore,
+          documentationScore: s.documentationScore,
           explanation: s.explanation,
-          strengths: JSON.stringify(s.strengths),
-          concerns: JSON.stringify(s.concerns),
+          strengths: s.strengths,
+          concerns: s.concerns,
           createdAt: new Date(s.createdAt)
         }))
       }
@@ -104,31 +125,79 @@ async function main() {
       businessType: "restaurant",
       legalEntityName: "Oakland Sunrise Cafe LLC",
       yearsInBusiness: 6,
-      description:
-        "Neighborhood cafe with breakfast and lunch service, dine-in and takeout. No alcohol service. Limited catering for local offices.",
+      description: "Neighborhood cafe with breakfast and lunch service, dine-in and takeout.",
+      operationsDescription: "Cafe with dine-in, takeout, and small office catering.",
       address: "1421 Broadway",
+      city: "Oakland",
       zipCode: "94612",
       state: "CA",
+      naicsCode: "722513",
+      industryRiskTier: "moderate",
+      annualPremiumEstimate: 18000,
       annualRevenue: 750000,
       payroll: 260000,
       employeeCount: 8,
+      multipleInsureds: false,
+      installServiceMix: "Dine-in / takeout / catering",
       customerFootTraffic: true,
       offsiteWork: false,
       vehiclesUsed: false,
       subcontractorsUsed: false,
-      storesCustomerData: true,
-      priorClaims: ["Slip-and-fall claim reported two years ago."]
+      storesCustomerData: true
     },
-    renewalDate: "2026-10-01",
-    locationRisk: {
+    claimsFinancial: {
+      priorClaims: ["Slip-and-fall claim reported two years ago."],
+      totalClaimsCount: 1,
+      claimsOpenCount: 0,
+      claimFrequencyRate: 0.17,
+      averageClaimSeverity: 12500,
+      lossRatioEstimate: 0.46,
+      financialStabilityFlag: "stable",
+      priorInsuranceStability: "stable",
+      priorInsuranceDeclined: false,
+      coverageGapMonths: 0,
+      carrierChangesLast5Years: 1,
+      yearsSinceLastClaim: 2
+    },
+    property: {
+      effectiveBuildingAge: 28,
+      renovationYear: 2019,
+      constructionType: "Masonry non-combustible",
+      alarmCentralStation: true,
+      sprinklered: true,
+      propertyProtectionScore: 74,
+      locationHazardIndex: 48,
+      fireProtectionRating: 78,
+      distanceToFireStationMiles: 1.2,
+      distanceToHydrantFeet: 220,
+      premisesOwnershipStatus: "leased",
+      buildingQualityScore: 72,
       zipCode: "94612",
       naturalHazardLevel: "medium",
       floodRisk: "low",
       wildfireRisk: "medium",
-      severeWeatherRisk: "high",
+      severeWeatherRisk: "medium",
       crimeOrTheftRisk: "medium",
-      explanation:
-        "Placeholder location profile: moderate property and wildfire exposure with elevated severe weather considerations in regional modeling."
+      explanation: "Urban cafe location with manageable baseline hazard exposure."
+    },
+    cyberSafety: {
+      cyberReadinessScore: 68,
+      safetyCultureIndicator: 72,
+      cyberRiskPosture: 64,
+      mfaEnabled: true,
+      regularBackups: true,
+      incidentResponsePlan: false,
+      vendorRiskManagement: false,
+      oshaCompliant: true,
+      formalSafetyProgram: true,
+      employeeTrainingCadence: "quarterly"
+    },
+    documentation: {
+      expectedFeatureCount: 33,
+      completedFeatureCount: 29,
+      expectedDocuments: ["Lease", "Loss Runs", "Payroll Report", "Fire Suppression Inspection"],
+      providedDocuments: ["Lease"],
+      missingDocuments: ["Loss Runs", "Payroll Report", "Fire Suppression Inspection"]
     },
     evidence: [
       {
@@ -142,16 +211,6 @@ async function main() {
         confidenceImpact: 6
       },
       {
-        id: "doc-description",
-        documentType: "business-description",
-        name: "Basic Business Description",
-        uploadedAt: "2026-03-30",
-        status: "uploaded",
-        extractedFields: ["Operations summary"],
-        underwritingRelevance: "Supports class code alignment and exposure understanding.",
-        confidenceImpact: 4
-      },
-      {
         id: "doc-loss-runs",
         documentType: "loss-runs",
         name: "Loss Runs",
@@ -160,26 +219,17 @@ async function main() {
         extractedFields: [],
         underwritingRelevance: "Critical for evaluating prior loss history.",
         confidenceImpact: -8
-      },
+      }
+    ],
+    sourceDocuments: [
       {
-        id: "doc-payroll",
-        documentType: "payroll-report",
-        name: "Current Payroll Report",
-        uploadedAt: null,
-        status: "missing",
-        extractedFields: [],
-        underwritingRelevance: "Supports payroll allocation and workers comp estimates.",
-        confidenceImpact: -6
-      },
-      {
-        id: "doc-fire",
-        documentType: "fire-suppression-inspection",
-        name: "Fire Suppression Inspection",
-        uploadedAt: null,
-        status: "missing",
-        extractedFields: [],
-        underwritingRelevance: "Important restaurant property control evidence.",
-        confidenceImpact: -10
+        documentType: "lease",
+        originalFileName: "Current Lease Agreement",
+        mimeType: "application/pdf",
+        storageProvider: "seed",
+        parseStatus: "parsed",
+        semanticStatus: "indexed",
+        summary: "Lease confirms cafe tenancy and insured location."
       }
     ],
     timeline: [
@@ -191,15 +241,6 @@ async function main() {
         scoreImpact: 0,
         confidenceImpact: 0,
         category: "business-change"
-      },
-      {
-        id: "ev-2",
-        date: "2026-02-04",
-        title: "Uploaded lease",
-        description: "Lease document added to evidence locker.",
-        scoreImpact: 0,
-        confidenceImpact: 5,
-        category: "document"
       }
     ],
     snapshots: [
@@ -214,11 +255,17 @@ async function main() {
         propertyControls: 45,
         operationalControls: 72,
         locationContext: 61,
+        operationalScore: 68,
+        claimsFinancialScore: 64,
+        propertyLocationScore: 58,
+        cyberSafetyScore: 67,
+        documentationScore: 52,
         explanation: "Your business may be insurable, but important underwriting evidence is missing.",
         strengths: ["Financial baseline is documented with revenue, payroll, and staffing."],
         concerns: ["Confidence score is low because critical evidence is missing or stale."]
       }
-    ]
+    ],
+    renewalDate: "2026-10-01"
   });
 
   await replaceBusinessGraph({
@@ -229,29 +276,79 @@ async function main() {
       businessType: "contractor",
       legalEntityName: "BayBuild Contractors Inc.",
       yearsInBusiness: 9,
-      description: "General contractor for mixed residential and small commercial remodel projects across the Bay Area.",
+      description: "General contractor for residential and small commercial remodels.",
+      operationsDescription: "Mixed self-perform and subcontracted remodel work across the Bay Area.",
       address: "370 Townsend St",
+      city: "San Francisco",
       zipCode: "94107",
       state: "CA",
+      naicsCode: "236220",
+      industryRiskTier: "high",
+      annualPremiumEstimate: 42000,
       annualRevenue: 1200000,
       payroll: 420000,
       employeeCount: 14,
+      multipleInsureds: true,
+      installServiceMix: "Framing / finish / MEP coordination",
       customerFootTraffic: false,
       offsiteWork: true,
       vehiclesUsed: true,
       subcontractorsUsed: true,
-      storesCustomerData: true,
-      priorClaims: []
+      storesCustomerData: true
     },
-    renewalDate: "2026-12-15",
-    locationRisk: {
+    claimsFinancial: {
+      priorClaims: [],
+      totalClaimsCount: 0,
+      claimsOpenCount: 0,
+      claimFrequencyRate: 0,
+      averageClaimSeverity: 0,
+      lossRatioEstimate: 0.22,
+      financialStabilityFlag: "stable",
+      priorInsuranceStability: "minor_gaps",
+      priorInsuranceDeclined: false,
+      coverageGapMonths: 1,
+      carrierChangesLast5Years: 2,
+      yearsSinceLastClaim: null
+    },
+    property: {
+      effectiveBuildingAge: 14,
+      renovationYear: 2021,
+      constructionType: "Tilt-up concrete",
+      alarmCentralStation: true,
+      sprinklered: false,
+      propertyProtectionScore: 66,
+      locationHazardIndex: 40,
+      fireProtectionRating: 70,
+      distanceToFireStationMiles: 1.8,
+      distanceToHydrantFeet: 300,
+      premisesOwnershipStatus: "leased",
+      buildingQualityScore: 68,
       zipCode: "94107",
       naturalHazardLevel: "medium",
       floodRisk: "medium",
       wildfireRisk: "low",
       severeWeatherRisk: "medium",
       crimeOrTheftRisk: "medium",
-      explanation: "Placeholder location profile for contractor operations and equipment risk context."
+      explanation: "Contractor office and yard location with manageable regional hazard exposure."
+    },
+    cyberSafety: {
+      cyberReadinessScore: 62,
+      safetyCultureIndicator: 58,
+      cyberRiskPosture: 54,
+      mfaEnabled: true,
+      regularBackups: false,
+      incidentResponsePlan: false,
+      vendorRiskManagement: false,
+      oshaCompliant: true,
+      formalSafetyProgram: true,
+      employeeTrainingCadence: "monthly"
+    },
+    documentation: {
+      expectedFeatureCount: 33,
+      completedFeatureCount: 28,
+      expectedDocuments: ["Payroll by Job Role", "Subcontractor COIs", "Driver List"],
+      providedDocuments: ["Payroll by Job Role"],
+      missingDocuments: ["Subcontractor COIs", "Driver List"]
     },
     evidence: [
       {
@@ -263,16 +360,17 @@ async function main() {
         extractedFields: ["Carpenter payroll", "Foreman payroll"],
         underwritingRelevance: "Useful for class-based payroll allocation.",
         confidenceImpact: 5
-      },
+      }
+    ],
+    sourceDocuments: [
       {
-        id: "bdoc-2",
-        documentType: "subcontractor-coi",
-        name: "Subcontractor COIs",
-        uploadedAt: null,
-        status: "missing",
-        extractedFields: [],
-        underwritingRelevance: "Important transfer-of-risk evidence.",
-        confidenceImpact: -9
+        documentType: "payroll-report",
+        originalFileName: "Payroll by Job Role",
+        mimeType: "application/pdf",
+        storageProvider: "seed",
+        parseStatus: "parsed",
+        semanticStatus: "indexed",
+        summary: "Payroll breakout by trade and role for contractor operations."
       }
     ],
     timeline: [
@@ -288,31 +386,36 @@ async function main() {
     ],
     snapshots: [
       {
-        createdAt: "2026-04-20",
+        createdAt: "2026-03-01",
         overallScore: 60,
         confidenceScore: 48,
-        dataCompleteness: 76,
-        classificationClarity: 85,
-        financialStability: 94,
-        lossHistory: 84,
-        propertyControls: 65,
-        operationalControls: 52,
-        locationContext: 62,
-        explanation: "Your business may be insurable, but important underwriting evidence is missing.",
-        strengths: ["Business operations are described clearly enough for initial underwriting review."],
-        concerns: ["Operational exposure details are missing for vehicles or subcontracted work."]
+        dataCompleteness: 72,
+        classificationClarity: 74,
+        financialStability: 69,
+        lossHistory: 82,
+        propertyControls: 61,
+        operationalControls: 56,
+        locationContext: 60,
+        operationalScore: 58,
+        claimsFinancialScore: 70,
+        propertyLocationScore: 61,
+        cyberSafetyScore: 57,
+        documentationScore: 44,
+        explanation: "Contractor profile is viable, but evidence and controls are still incomplete.",
+        strengths: ["No reported prior claims."],
+        concerns: ["Operational and documentation gaps still need follow-up."]
       }
-    ]
+    ],
+    renewalDate: "2026-12-15"
   });
-
-  console.log("Seeded demo businesses.");
 }
 
 main()
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  })
-  .finally(async () => {
+  .then(async () => {
     await prisma.$disconnect();
+  })
+  .catch(async (error) => {
+    console.error(error);
+    await prisma.$disconnect();
+    process.exit(1);
   });

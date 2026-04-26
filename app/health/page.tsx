@@ -1,6 +1,8 @@
 import AppShell from "@/components/AppShell";
 import { prisma } from "@/lib/server/prisma";
 
+export const dynamic = "force-dynamic";
+
 async function getHealth() {
   try {
     const [users, businesses, locationRisks, evidenceDocs, timelineEvents, actions, snapshots] = await Promise.all([

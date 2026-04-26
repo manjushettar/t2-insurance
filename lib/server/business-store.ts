@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import { bayBuildContractorState, oaklandInitialState } from "@/lib/mockData";
 import { applyUpdate, buildRecommendedActions, calculateReadiness } from "@/lib/scoring";
 import { AppState, BusinessUpdateInput, RecommendedAction } from "@/lib/types";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/server/prisma";
 
 const DEMO_USER_EMAIL = "demo@insureready.local";
@@ -40,24 +41,17 @@ function normalizeAction(action: RecommendedAction): { priority: string; effort:
   };
 }
 
-function parseStringArray(value: string | null | undefined): string[] {
-  if (!value) return [];
-  try {
-    const parsed = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed.filter((item) => typeof item === "string") : [];
-  } catch {
-    return [];
-  }
+function asObject<T>(value: unknown): Partial<T> {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Partial<T>) : {};
 }
 
-function parseJsonObject<T>(value: string | null | undefined): Partial<T> {
-  if (!value) return {};
-  try {
-    const parsed = JSON.parse(value);
-    return typeof parsed === "object" && parsed !== null ? (parsed as Partial<T>) : {};
-  } catch {
-    return {};
-  }
+function asStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string");
+}
+
+function toJson(value: unknown): Prisma.InputJsonValue {
+  return value as Prisma.InputJsonValue;
 }
 
 function parseBusinessType(value: string): AppState["profile"]["businessType"] {
@@ -75,11 +69,11 @@ function parseEvidenceStatus(value: string): AppState["evidence"][number]["statu
 }
 
 function toAppState(record: any): AppState {
-  const profileData = parseJsonObject<AppState["profile"]>(record.profileData);
-  const claimsFinancialData = parseJsonObject<AppState["claimsFinancial"]>(record.claimsFinancialData);
-  const propertyData = parseJsonObject<AppState["property"]>(record.propertyData);
-  const cyberSafetyData = parseJsonObject<AppState["cyberSafety"]>(record.cyberSafetyData);
-  const documentationData = parseJsonObject<AppState["documentation"]>(record.documentationData);
+  const profileData = asObject<AppState["profile"]>(record.profileData);
+  const claimsFinancialData = asObject<AppState["claimsFinancial"]>(record.claimsFinancialData);
+  const propertyData = asObject<AppState["property"]>(record.propertyData);
+  const cyberSafetyData = asObject<AppState["cyberSafety"]>(record.cyberSafetyData);
+  const documentationData = asObject<AppState["documentation"]>(record.documentationData);
 
   const scoreTrend = record.snapshots.map((snapshot: any) => ({
     date: snapshot.createdAt.toISOString().slice(0, 10),
@@ -116,8 +110,8 @@ function toAppState(record: any): AppState {
       lastUpdatedAt: record.updatedAt.toISOString()
     },
     claimsFinancial: {
-      priorClaims: claimsFinancialData.priorClaims ?? parseStringArray(record.priorClaims),
-      totalClaimsCount: claimsFinancialData.totalClaimsCount ?? parseStringArray(record.priorClaims).length,
+      priorClaims: asStringArray(record.priorClaims ?? claimsFinancialData.priorClaims),
+      totalClaimsCount: claimsFinancialData.totalClaimsCount ?? asStringArray(record.priorClaims).length,
       claimsOpenCount: claimsFinancialData.claimsOpenCount ?? 0,
       claimFrequencyRate: claimsFinancialData.claimFrequencyRate ?? 0,
       averageClaimSeverity: claimsFinancialData.averageClaimSeverity ?? 0,
@@ -128,7 +122,7 @@ function toAppState(record: any): AppState {
       coverageGapMonths: claimsFinancialData.coverageGapMonths ?? 0,
       carrierChangesLast5Years: claimsFinancialData.carrierChangesLast5Years ?? 0,
       yearsSinceLastClaim:
-        claimsFinancialData.yearsSinceLastClaim === undefined ? (parseStringArray(record.priorClaims).length > 0 ? 1 : null) : claimsFinancialData.yearsSinceLastClaim
+        claimsFinancialData.yearsSinceLastClaim === undefined ? (asStringArray(record.priorClaims).length > 0 ? 1 : null) : claimsFinancialData.yearsSinceLastClaim
     },
     property: {
       effectiveBuildingAge: propertyData.effectiveBuildingAge ?? 20,
@@ -166,9 +160,13 @@ function toAppState(record: any): AppState {
     documentation: {
       expectedFeatureCount: documentationData.expectedFeatureCount ?? 33,
       completedFeatureCount: documentationData.completedFeatureCount ?? 20,
-      expectedDocuments: documentationData.expectedDocuments ?? record.evidence.map((doc: any) => doc.name),
-      providedDocuments: documentationData.providedDocuments ?? record.evidence.filter((doc: any) => doc.status !== "missing").map((doc: any) => doc.name),
-      missingDocuments: documentationData.missingDocuments ?? record.evidence.filter((doc: any) => doc.status === "missing").map((doc: any) => doc.name)
+      expectedDocuments: asStringArray(documentationData.expectedDocuments ?? record.evidence.map((doc: any) => doc.name)),
+      providedDocuments: asStringArray(
+        documentationData.providedDocuments ?? record.evidence.filter((doc: any) => doc.status !== "missing").map((doc: any) => doc.name)
+      ),
+      missingDocuments: asStringArray(
+        documentationData.missingDocuments ?? record.evidence.filter((doc: any) => doc.status === "missing").map((doc: any) => doc.name)
+      )
     },
     evidence: record.evidence.map((doc: any) => ({
       id: doc.id,
@@ -177,7 +175,7 @@ function toAppState(record: any): AppState {
       name: doc.name,
       uploadedAt: doc.uploadedAt ? doc.uploadedAt.toISOString() : "",
       status: parseEvidenceStatus(doc.status),
-      extractedFields: parseStringArray(doc.extractedFields),
+      extractedFields: asStringArray(doc.extractedFields),
       underwritingRelevance: doc.underwritingRelevance,
       confidenceImpact: doc.confidenceImpact
     })),
@@ -214,6 +212,13 @@ async function loadBusinessRecord(businessId: string) {
     include: {
       locationRisk: true,
       evidence: { orderBy: { createdAt: "asc" } },
+      sourceDocuments: {
+        include: {
+          chunks: { orderBy: { chunkIndex: "asc" } },
+          extractedFacts: true
+        },
+        orderBy: { createdAt: "asc" }
+      },
       timeline: { orderBy: { date: "desc" } },
       snapshots: { orderBy: { createdAt: "asc" } }
     }
@@ -236,6 +241,27 @@ export async function getBusinessStateById(businessId: string): Promise<AppState
   const record = await loadBusinessRecord(businessId);
   if (!record) return null;
   return toAppState(record);
+}
+
+function buildSourceDocumentSeed(state: AppState) {
+  return state.evidence
+    .filter((doc) => doc.status === "uploaded" || doc.status === "current")
+    .map((doc) => ({
+      businessId: state.profile.id,
+      evidenceDocumentId: doc.id,
+      documentType: doc.documentType,
+      originalFileName: doc.name,
+      mimeType: doc.documentType.includes("photo") ? "image/*" : "application/octet-stream",
+      storageProvider: "local",
+      storageKey: doc.id,
+      parseStatus: "pending",
+      semanticStatus: "pending",
+      summary: doc.underwritingRelevance,
+      extractionMetadata: {
+        extractedFields: doc.extractedFields,
+        confidenceImpact: doc.confidenceImpact
+      }
+    }));
 }
 
 export async function upsertBusinessState(state: AppState): Promise<AppState> {
@@ -264,9 +290,9 @@ export async function upsertBusinessState(state: AppState): Promise<AppState> {
         vehiclesUsed: state.profile.vehiclesUsed,
         subcontractorsUsed: state.profile.subcontractorsUsed,
         storesCustomerData: state.profile.storesCustomerData,
-        priorClaims: JSON.stringify(state.claimsFinancial.priorClaims),
+        priorClaims: state.claimsFinancial.priorClaims,
         renewalDate: new Date(state.renewalDate),
-        profileData: JSON.stringify({
+        profileData: {
           operationsDescription: state.profile.operationsDescription,
           city: state.profile.city,
           naicsCode: state.profile.naicsCode,
@@ -274,11 +300,11 @@ export async function upsertBusinessState(state: AppState): Promise<AppState> {
           annualPremiumEstimate: state.profile.annualPremiumEstimate,
           multipleInsureds: state.profile.multipleInsureds,
           installServiceMix: state.profile.installServiceMix
-        }),
-        claimsFinancialData: JSON.stringify(state.claimsFinancial),
-        propertyData: JSON.stringify(state.property),
-        cyberSafetyData: JSON.stringify(state.cyberSafety),
-        documentationData: JSON.stringify(state.documentation)
+        } as Prisma.InputJsonObject,
+        claimsFinancialData: toJson(state.claimsFinancial),
+        propertyData: toJson(state.property),
+        cyberSafetyData: toJson(state.cyberSafety),
+        documentationData: toJson(state.documentation)
       },
       create: {
         id: state.profile.id,
@@ -299,9 +325,9 @@ export async function upsertBusinessState(state: AppState): Promise<AppState> {
         vehiclesUsed: state.profile.vehiclesUsed,
         subcontractorsUsed: state.profile.subcontractorsUsed,
         storesCustomerData: state.profile.storesCustomerData,
-        priorClaims: JSON.stringify(state.claimsFinancial.priorClaims),
+        priorClaims: state.claimsFinancial.priorClaims,
         renewalDate: new Date(state.renewalDate),
-        profileData: JSON.stringify({
+        profileData: {
           operationsDescription: state.profile.operationsDescription,
           city: state.profile.city,
           naicsCode: state.profile.naicsCode,
@@ -309,11 +335,11 @@ export async function upsertBusinessState(state: AppState): Promise<AppState> {
           annualPremiumEstimate: state.profile.annualPremiumEstimate,
           multipleInsureds: state.profile.multipleInsureds,
           installServiceMix: state.profile.installServiceMix
-        }),
-        claimsFinancialData: JSON.stringify(state.claimsFinancial),
-        propertyData: JSON.stringify(state.property),
-        cyberSafetyData: JSON.stringify(state.cyberSafety),
-        documentationData: JSON.stringify(state.documentation)
+        } as Prisma.InputJsonObject,
+        claimsFinancialData: toJson(state.claimsFinancial),
+        propertyData: toJson(state.property),
+        cyberSafetyData: toJson(state.cyberSafety),
+        documentationData: toJson(state.documentation)
       }
     });
 
@@ -340,7 +366,11 @@ export async function upsertBusinessState(state: AppState): Promise<AppState> {
       }
     });
 
+    await tx.documentFact.deleteMany({ where: { businessId: state.profile.id } });
+    await tx.documentChunk.deleteMany({ where: { businessId: state.profile.id } });
+    await tx.sourceDocument.deleteMany({ where: { businessId: state.profile.id } });
     await tx.evidenceDocument.deleteMany({ where: { businessId: state.profile.id } });
+
     if (state.evidence.length > 0) {
       await tx.evidenceDocument.createMany({
         data: state.evidence.map((doc) => ({
@@ -350,11 +380,16 @@ export async function upsertBusinessState(state: AppState): Promise<AppState> {
           name: doc.name,
           uploadedAt: doc.uploadedAt ? new Date(doc.uploadedAt) : null,
           status: doc.status,
-          extractedFields: JSON.stringify(doc.extractedFields ?? []),
+          extractedFields: toJson(doc.extractedFields),
           underwritingRelevance: doc.underwritingRelevance,
           confidenceImpact: doc.confidenceImpact
         }))
       });
+    }
+
+    const sourceDocuments = buildSourceDocumentSeed(state);
+    if (sourceDocuments.length > 0) {
+      await tx.sourceDocument.createMany({ data: sourceDocuments });
     }
 
     await tx.timelineEvent.deleteMany({ where: { businessId: state.profile.id } });
@@ -411,8 +446,8 @@ export async function upsertBusinessState(state: AppState): Promise<AppState> {
         cyberSafetyScore: score.cyberSafety,
         documentationScore: score.documentationCompleteness,
         explanation: score.explanation,
-        strengths: JSON.stringify(score.strengths),
-        concerns: JSON.stringify(score.concerns)
+        strengths: toJson(score.strengths),
+        concerns: toJson(score.concerns),
       }
     });
   });

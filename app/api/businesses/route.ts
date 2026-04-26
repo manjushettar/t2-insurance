@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { buildInitialStateFromOnboarding, OnboardingInput } from "@/lib/onboarding";
 import { listBusinesses, upsertBusinessState } from "@/lib/server/business-store";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const businesses = await listBusinesses();
   return NextResponse.json({ businesses });

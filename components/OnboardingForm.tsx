@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, KeyboardEvent, useState } from "react";
+import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{children}</label>;
@@ -13,8 +14,20 @@ interface ChatMessage {
 }
 
 export default function OnboardingForm() {
+  const router = useRouter();
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const [businessContext, setBusinessContext] = useState("");
   const [step, setStep] = useState<"intro" | "details">("intro");
+  const [submitting, setSubmitting] = useState(false);
+  const [businessName, setBusinessName] = useState("");
+  const [ownerName, setOwnerName] = useState("");
+  const [yearsInBusiness, setYearsInBusiness] = useState("");
+  const [employeeCount, setEmployeeCount] = useState("");
+  const [annualRevenue, setAnnualRevenue] = useState("");
+  const [zipCode, setZipCode] = useState("");
+  const [pdfFiles, setPdfFiles] = useState<string[]>([]);
+  const [photoFiles, setPhotoFiles] = useState<string[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -60,6 +73,90 @@ export default function OnboardingForm() {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
       submitChatMessage();
+    }
+  };
+
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (container) {
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: "smooth"
+      });
+    }
+  }, [messages, step]);
+
+  const goToDashboard = async () => {
+    setSubmitting(true);
+    try {
+      const response = await fetch("/api/businesses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          businessName: businessName || "Untitled Business",
+          businessType: "other",
+          legalEntityName: ownerName || businessName || "Unknown Owner",
+          description: businessContext || "No additional business context provided.",
+          operationsDescription: businessContext || "No additional business context provided.",
+          address: "",
+          city: "",
+          state: "CA",
+          zipCode: zipCode || "00000",
+          naicsCode: "",
+          industryRiskTier: "moderate",
+          annualRevenue: Number(annualRevenue) || 0,
+          annualPremiumEstimate: 0,
+          payroll: 0,
+          employeeCount: Number(employeeCount) || 0,
+          yearsInBusiness: Number(yearsInBusiness) || 0,
+          multipleInsureds: false,
+          installServiceMix: "",
+          customerFootTraffic: false,
+          offsiteWork: false,
+          vehiclesUsed: false,
+          subcontractorsUsed: false,
+          storesCustomerData: false,
+          priorClaims: "",
+          claimsOpenCount: 0,
+          averageClaimSeverity: 0,
+          lossRatioEstimate: 0.35,
+          financialStabilityFlag: "stable",
+          priorInsuranceStability: "unknown",
+          priorInsuranceDeclined: false,
+          coverageGapMonths: 0,
+          carrierChangesLast5Years: 0,
+          effectiveBuildingAge: 20,
+          constructionType: "Not provided",
+          alarmCentralStation: false,
+          sprinklered: false,
+          propertyProtectionScore: pdfFiles.length > 0 || photoFiles.length > 0 ? 62 : 54,
+          locationHazardIndex: 45,
+          fireProtectionRating: 60,
+          distanceToFireStationMiles: 2,
+          distanceToHydrantFeet: 250,
+          premisesOwnershipStatus: "leased",
+          cyberReadinessScore: 50,
+          safetyCultureIndicator: 52,
+          cyberRiskPosture: 48,
+          mfaEnabled: false,
+          regularBackups: false,
+          incidentResponsePlan: false,
+          vendorRiskManagement: false,
+          oshaCompliant: false,
+          formalSafetyProgram: false,
+          employeeTrainingCadence: "ad_hoc",
+          documents: [...pdfFiles, ...photoFiles].join(", ")
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save onboarding business.");
+      }
+
+      const data = (await response.json()) as { id: string };
+      router.push(`/dashboard?id=${data.id}`);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -157,13 +254,25 @@ export default function OnboardingForm() {
                       <label className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
                         <span className="mb-1 block font-medium text-slate-800">PDF documents</span>
                         <span className="mb-3 block text-sm text-slate-500">Policies, loss runs, financial statements, licenses</span>
-                        <input type="file" accept=".pdf" multiple className="block w-full text-sm text-slate-500 file:mr-3 file:rounded-full file:border-0 file:bg-slate-900 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white" />
+                        <input
+                          type="file"
+                          accept=".pdf"
+                          multiple
+                          onChange={(event) => setPdfFiles(Array.from(event.target.files ?? []).map((file) => file.name))}
+                          className="block w-full text-sm text-slate-500 file:mr-3 file:rounded-full file:border-0 file:bg-slate-900 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white"
+                        />
                       </label>
 
                       <label className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
                         <span className="mb-1 block font-medium text-slate-800">Photos</span>
                         <span className="mb-3 block text-sm text-slate-500">Building photos, equipment, signage, work areas</span>
-                        <input type="file" accept="image/*" multiple className="block w-full text-sm text-slate-500 file:mr-3 file:rounded-full file:border-0 file:bg-slate-900 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white" />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={(event) => setPhotoFiles(Array.from(event.target.files ?? []).map((file) => file.name))}
+                          className="block w-full text-sm text-slate-500 file:mr-3 file:rounded-full file:border-0 file:bg-slate-900 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white"
+                        />
                       </label>
                     </div>
                   </div>
@@ -171,49 +280,51 @@ export default function OnboardingForm() {
                   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     <div>
                       <FieldLabel>Business Name</FieldLabel>
-                      <input className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 outline-none transition focus:border-slate-400 focus:bg-white" placeholder="Acme Services LLC" />
+                      <input value={businessName} onChange={(event) => setBusinessName(event.target.value)} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 outline-none transition focus:border-slate-400 focus:bg-white" placeholder="Acme Services LLC" />
                     </div>
                     <div>
                       <FieldLabel>Owner Name</FieldLabel>
-                      <input className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 outline-none transition focus:border-slate-400 focus:bg-white" placeholder="Jordan Smith" />
+                      <input value={ownerName} onChange={(event) => setOwnerName(event.target.value)} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 outline-none transition focus:border-slate-400 focus:bg-white" placeholder="Jordan Smith" />
                     </div>
                     <div>
                       <FieldLabel>Years In Business</FieldLabel>
-                      <input type="number" className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 outline-none transition focus:border-slate-400 focus:bg-white" placeholder="8" />
+                      <input value={yearsInBusiness} onChange={(event) => setYearsInBusiness(event.target.value)} type="number" className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 outline-none transition focus:border-slate-400 focus:bg-white" placeholder="8" />
                     </div>
                     <div>
                       <FieldLabel>Employee Count</FieldLabel>
-                      <input type="number" className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 outline-none transition focus:border-slate-400 focus:bg-white" placeholder="24" />
+                      <input value={employeeCount} onChange={(event) => setEmployeeCount(event.target.value)} type="number" className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 outline-none transition focus:border-slate-400 focus:bg-white" placeholder="24" />
                     </div>
                     <div>
                       <FieldLabel>Annual Revenue</FieldLabel>
-                      <input type="number" className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 outline-none transition focus:border-slate-400 focus:bg-white" placeholder="1250000" />
+                      <input value={annualRevenue} onChange={(event) => setAnnualRevenue(event.target.value)} type="number" className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 outline-none transition focus:border-slate-400 focus:bg-white" placeholder="1250000" />
                     </div>
                     <div>
                       <FieldLabel>ZIP Code</FieldLabel>
-                      <input className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 outline-none transition focus:border-slate-400 focus:bg-white" placeholder="94107" />
+                      <input value={zipCode} onChange={(event) => setZipCode(event.target.value)} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 outline-none transition focus:border-slate-400 focus:bg-white" placeholder="94107" />
                     </div>
                   </div>
 
                   <div className="flex justify-end">
                     <button
                       type="button"
-                      className="rounded-full bg-slate-900 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-slate-700"
+                      onClick={goToDashboard}
+                      disabled={submitting}
+                      className="rounded-full bg-slate-900 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      Get your InsuroScore
+                      {submitting ? "Saving..." : "Get your InsuroScore"}
                     </button>
                   </div>
                 </div>
               </div>
 
-              <aside className="rounded-[2rem] border border-slate-200 bg-white/85 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur">
-                <div className="flex h-full min-h-[520px] flex-col lg:min-h-0">
+              <aside className="h-full overflow-hidden rounded-[2rem] border border-slate-200 bg-white/85 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur">
+                <div className="flex h-full min-h-[520px] min-h-0 flex-col overflow-hidden lg:min-h-0">
                   <div className="mb-4 border-b border-slate-200 pb-3">
                     <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Assistant</p>
                     <h3 className="mt-2 text-xl font-semibold text-slate-900">Context chat</h3>
                   </div>
 
-                  <div className="flex-1 space-y-3 overflow-auto">
+                  <div ref={messagesContainerRef} className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1">
                     {messages.map((message) => (
                       <div
                         key={message.id}
@@ -226,6 +337,7 @@ export default function OnboardingForm() {
                         {message.content}
                       </div>
                     ))}
+                    <div ref={messagesEndRef} />
                   </div>
 
                   <div className="mt-4 border-t border-slate-200 pt-4">
