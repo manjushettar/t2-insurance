@@ -66,9 +66,53 @@ Claims and Property are weighted highest because they map most directly to insur
 
 ## How Pillars Combine into the Final Score
 
-1. Each feature is normalized to 0–1 (good → bad axis).
-2. Within a pillar, features are weighted and summed → pillar score (0–100).
-3. Pillar scores are weighted by the table above → composite score.
-4. **Knockouts** (e.g. unremediated prior decline, multiple open claims) can cap the composite below the weighted-sum result. These reflect underwriter "deal-breakers" that don't get averaged away.
+There are **three layers of weights**, and each layer sums to 1.0. That's what keeps the final score on a clean 0–100 scale without any extra rescaling.
 
-All weights live in a YAML config so we can tune them without touching code.
+### Layer 1 — Normalize each feature to 0–1
+
+Every feature gets converted to a 0–1 number where **1 = best for insurability**. Different features need different conversions:
+
+| Feature looks like… | We convert it by… | Example |
+|---|---|---|
+| Already 0–1 (e.g. cyber readiness) | Pass through | `0.75 → 0.75` |
+| A category (Low/Med/High) | Lookup table | `High → 0.25` |
+| A continuous value with sweet spots | Piecewise curve | `4 yrs in business → 0.74` |
+| A "more = worse" count | `1 - x/threshold` | `2 claims/yr → 0.0` |
+
+These curves live in `weights.yaml` so we can tune them without code changes.
+
+### Layer 2 — Combine features into a pillar score (0–100)
+
+Within a pillar, every feature has a weight (the weights inside a pillar sum to 1.0). The pillar score is a weighted average:
+
+> **pillar score = average of (weight × normalized value)** — but only over features the user actually provided.
+
+That last part matters. If the user only filled in 60% of a pillar's features, we average over those 60%, **not** over all of them. Missing data isn't punished here — it's tracked separately as a **confidence** number ("score based on 60% of inputs"), shown on the dashboard.
+
+### Layer 3 — Combine pillars into the composite (0–100)
+
+Pillar weights also sum to 1.0 (`0.20 + 0.25 + 0.25 + 0.20 + 0.10`), so:
+
+> **composite = sum of (pillar score × pillar weight)**
+
+No further normalization needed — the math just works.
+
+### Layer 4 — Apply knockouts (caps, not weights)
+
+Knockouts don't enter the math above. After the composite is computed, certain underwriter deal-breakers can cap it:
+
+> **final = min(composite, knockout cap)**
+
+For example: an unremediated prior decline caps the score at 60, even if everything else is perfect. The dashboard then surfaces *why* it was capped and what to do about it.
+
+### Where the dashboard "points" come from
+
+For the contribution table, each feature's points are:
+
+> **points = (feature weight in pillar) × (normalized value) × (pillar weight) × 100**
+
+Add up every row and you get the composite. That's why the table reads as a clean breakdown of where the score came from.
+
+---
+
+All weights, normalization curves, and knockout rules live in **`weights.yaml`** so we can tune them without touching code.

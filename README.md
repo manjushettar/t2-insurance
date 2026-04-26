@@ -1,49 +1,28 @@
-# InsureReady MVP
+# t2-insurance
 
-Next.js + TypeScript + Tailwind MVP for year-round insurance readiness tracking.
+Insurance Readiness Score engine for SMBs. Plug and Play SMB Innovation Sprint, Track 2.
 
-## Stack
-- Next.js App Router
-- TypeScript
-- Tailwind CSS
-- SQLite + Prisma
+Takes raw business data (financials, claims, property, ZIP, safety/cyber) and outputs a 0–100 readiness score with a per-feature contribution table and ranked recommendations.
 
-## Local setup
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
-2. Create env file:
-   ```bash
-   cp .env.example .env
-   ```
-3. Generate Prisma client:
-   ```bash
-   npm run prisma:generate
-   ```
-4. Push schema to SQLite:
-   ```bash
-   npm run prisma:push
-   ```
-5. Seed demo businesses:
-   ```bash
-   npm run prisma:seed
-   ```
-6. Run app:
-   ```bash
-   npm run dev
-   ```
+## Run
 
-## Key routes
-- `/` landing
-- `/onboarding` create a business profile
-- `/dashboard?id=<businessId>` readiness dashboard
-- `/underwriter-view?id=<businessId>` underwriter-facing summary
+```bash
+pip install pyyaml
+python demo.py
+```
 
-## API routes
-- `GET /api/businesses`
-- `POST /api/businesses`
-- `GET /api/businesses/:id`
-- `POST /api/businesses/:id/updates`
-- `GET /api/businesses/active`
-- `POST /api/demo` (`oakland` or `contractor`)
+## Files
+
+- `engine.py` — scoring pipeline
+- `weights.yaml` — tunable weights, normalization curves, knockouts, action templates
+- `demo.py` — example run
+- `scoring_categories_and_weights.md` — pillars, weights, and how the math works
+
+## Usage
+
+```python
+from engine import compute_score
+result = compute_score(raw_features_dict)
+```
+
+`result` exposes `composite_score`, `pillars`, `contribution_table`, `knockouts`, `recommendations`, `completeness`.
