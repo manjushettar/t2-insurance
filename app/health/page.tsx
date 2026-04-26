@@ -5,25 +5,25 @@ export const dynamic = "force-dynamic";
 
 async function getHealth() {
   try {
-    const [users, businesses, locationRisks, evidenceDocs, timelineEvents, actions, snapshots] = await Promise.all([
+    const [users, businesses, underwritingProfiles, evidenceDocs, timelineEvents, sourceDocuments, scoreRuns] = await Promise.all([
       prisma.user.count(),
       prisma.businessProfile.count(),
-      prisma.locationRisk.count(),
+      prisma.underwritingProfile.count(),
       prisma.evidenceDocument.count(),
       prisma.timelineEvent.count(),
-      prisma.recommendedAction.count(),
-      prisma.readinessSnapshot.count()
+      prisma.sourceDocument.count(),
+      prisma.scoreRun.count()
     ]);
 
     return {
       ok: true,
       users,
       businesses,
-      locationRisks,
+      underwritingProfiles,
       evidenceDocs,
       timelineEvents,
-      actions,
-      snapshots,
+      sourceDocuments,
+      scoreRuns,
       checkedAt: new Date().toISOString()
     };
   } catch (error) {
@@ -61,11 +61,11 @@ export default async function HealthPage() {
             <ul className="space-y-1 text-sm text-slate-700">
               <li>Users: {health.users}</li>
               <li>Businesses: {health.businesses}</li>
-              <li>Location Risks: {health.locationRisks}</li>
+              <li>Underwriting Profiles: {health.underwritingProfiles}</li>
               <li>Evidence Documents: {health.evidenceDocs}</li>
               <li>Timeline Events: {health.timelineEvents}</li>
-              <li>Recommended Actions: {health.actions}</li>
-              <li>Readiness Snapshots: {health.snapshots}</li>
+              <li>Source Documents: {health.sourceDocuments}</li>
+              <li>Score Runs: {health.scoreRuns}</li>
             </ul>
           </section>
         ) : null}

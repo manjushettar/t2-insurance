@@ -10,8 +10,15 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const payload = (await request.json()) as OnboardingInput;
-  const initialState = buildInitialStateFromOnboarding(payload);
-  const saved = await upsertBusinessState(initialState);
-  return NextResponse.json({ id: saved.profile.id, state: saved }, { status: 201 });
+  try {
+    const payload = (await request.json()) as OnboardingInput;
+    const initialState = buildInitialStateFromOnboarding(payload);
+    const saved = await upsertBusinessState(initialState);
+    return NextResponse.json({ id: saved.profile.id, state: saved }, { status: 201 });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to save onboarding business." },
+      { status: 500 }
+    );
+  }
 }

@@ -4,6 +4,7 @@ import {
   BusinessType,
   CyberSafetyProfile,
   DocumentationProfile,
+  EngineRawFeatures,
   EvidenceDocument,
   FinancialStabilityFlag,
   IndustryRiskTier,
@@ -235,6 +236,56 @@ function buildDocumentationProfile(input: OnboardingInput, evidence: EvidenceDoc
   };
 }
 
+function buildRawFeatures(input: OnboardingInput, priorClaims: string[]): EngineRawFeatures {
+  return {
+    business_name: input.businessName,
+    entity_type: input.businessType,
+    physical_address: `${input.address}, ${input.city}, ${input.state} ${input.zipCode}`.trim(),
+    primary_zip_code: input.zipCode,
+    years_in_business: input.yearsInBusiness,
+    naics_code: input.naicsCode,
+    description_of_operations: input.operationsDescription || input.description,
+    number_of_members: Math.max(input.employeeCount, 1),
+    additional_named_insureds: input.multipleInsureds ? [input.legalEntityName || input.businessName] : [],
+    annual_revenue: input.annualRevenue,
+    employee_count_ft: input.employeeCount,
+    employee_count_pt: 0,
+    credit_score: null,
+    sales_percentage_installation_service: input.installServiceMix ? 50 : null,
+    total_claims_count: Math.max(priorClaims.length, input.claimsOpenCount),
+    total_claims_paid: Math.max(priorClaims.length, input.claimsOpenCount) * input.averageClaimSeverity,
+    open_claims_count: input.claimsOpenCount,
+    loss_run_years: input.yearsSinceLastClaim ?? null,
+    prior_carrier_name: "",
+    prior_policy_premium: input.annualPremiumEstimate || null,
+    prior_policy_dates: "",
+    prior_coverage_declined: input.priorInsuranceDeclined,
+    decline_remediated: !input.priorInsuranceDeclined,
+    decline_evidence_provided: false,
+    building_construction_type: input.constructionType,
+    building_year_built: input.effectiveBuildingAge > 0 ? new Date().getFullYear() - input.effectiveBuildingAge : null,
+    building_year_updated: input.renovationYear ?? null,
+    square_footage: null,
+    leased_area: null,
+    fire_alarm_present: input.alarmCentralStation,
+    sprinkler_system_present: input.sprinklered,
+    fire_extinguishers_present: true,
+    distance_to_fire_station: input.distanceToFireStationMiles,
+    distance_to_fire_hydrant: input.distanceToHydrantFeet,
+    roof_replaced_recently: Boolean(input.renovationYear && input.renovationYear >= new Date().getFullYear() - 10),
+    no_visible_water_damage: true,
+    electrical_updated: Boolean(input.renovationYear && input.renovationYear >= new Date().getFullYear() - 15),
+    exterior_well_maintained: (input.buildingQualityScore ?? 60) >= 65,
+    hvac_serviced_recently: Boolean(input.renovationYear && input.renovationYear >= new Date().getFullYear() - 5),
+    bankruptcy_recent: input.financialStabilityFlag === "distressed",
+    prior_cancellation: input.coverageGapMonths > 0,
+    cancellation_remediated: input.coverageGapMonths === 0,
+    hazardous_exposures_disclosed: input.offsiteWork || input.subcontractorsUsed,
+    foreign_operations: false,
+    criminal_activity_disclosed: false
+  };
+}
+
 export function buildInitialStateFromOnboarding(input: OnboardingInput): AppState {
   const id = `biz-${Date.now()}`;
   const priorClaims = splitList(input.priorClaims);
@@ -287,6 +338,11 @@ export function buildInitialStateFromOnboarding(input: OnboardingInput): AppStat
 
   return {
     profile,
+    underwritingProfile: {
+      rawFeatures: buildRawFeatures(input, priorClaims),
+      zipAreaFeatures: null,
+      scoreResult: null
+    },
     claimsFinancial: {
       priorClaims,
       totalClaimsCount: Math.max(priorClaims.length, input.claimsOpenCount),

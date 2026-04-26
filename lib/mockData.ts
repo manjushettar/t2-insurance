@@ -1,7 +1,57 @@
-import { AppState, BusinessProfile, EvidenceDocument, PropertyProfile, ScoreTrendPoint } from "@/lib/types";
+import { AppState, BusinessProfile, EngineRawFeatures, EvidenceDocument, PropertyProfile, ScoreTrendPoint } from "@/lib/types";
 
 const today = new Date();
 const iso = (d: Date) => d.toISOString();
+
+function buildRawFeatures(profile: BusinessProfile, property: PropertyProfile, state: AppState["claimsFinancial"]): EngineRawFeatures {
+  return {
+    business_name: profile.businessName,
+    entity_type: profile.businessType,
+    physical_address: `${profile.address}, ${profile.city}, ${profile.state} ${profile.zipCode}`,
+    primary_zip_code: profile.zipCode,
+    years_in_business: profile.yearsInBusiness,
+    naics_code: profile.naicsCode,
+    description_of_operations: profile.operationsDescription,
+    number_of_members: profile.employeeCount,
+    additional_named_insureds: profile.multipleInsureds ? [profile.legalEntityName] : [],
+    annual_revenue: profile.annualRevenue,
+    employee_count_ft: profile.employeeCount,
+    employee_count_pt: 0,
+    credit_score: null,
+    sales_percentage_installation_service: profile.installServiceMix ? 50 : null,
+    total_claims_count: state.totalClaimsCount,
+    total_claims_paid: state.totalClaimsCount * state.averageClaimSeverity,
+    open_claims_count: state.claimsOpenCount,
+    loss_run_years: state.yearsSinceLastClaim,
+    prior_carrier_name: "",
+    prior_policy_premium: profile.annualPremiumEstimate,
+    prior_policy_dates: "",
+    prior_coverage_declined: state.priorInsuranceDeclined,
+    decline_remediated: !state.priorInsuranceDeclined,
+    decline_evidence_provided: false,
+    building_construction_type: property.constructionType,
+    building_year_built: new Date().getFullYear() - property.effectiveBuildingAge,
+    building_year_updated: property.renovationYear,
+    square_footage: null,
+    leased_area: property.premisesOwnershipStatus === "leased" ? 2000 : null,
+    fire_alarm_present: property.alarmCentralStation,
+    sprinkler_system_present: property.sprinklered,
+    fire_extinguishers_present: true,
+    distance_to_fire_station: property.distanceToFireStationMiles,
+    distance_to_fire_hydrant: property.distanceToHydrantFeet,
+    roof_replaced_recently: Boolean(property.renovationYear && property.renovationYear >= new Date().getFullYear() - 10),
+    no_visible_water_damage: true,
+    electrical_updated: Boolean(property.renovationYear && property.renovationYear >= new Date().getFullYear() - 15),
+    exterior_well_maintained: (property.buildingQualityScore ?? 60) >= 65,
+    hvac_serviced_recently: Boolean(property.renovationYear && property.renovationYear >= new Date().getFullYear() - 5),
+    bankruptcy_recent: state.financialStabilityFlag === "distressed",
+    prior_cancellation: state.coverageGapMonths > 0,
+    cancellation_remediated: state.coverageGapMonths === 0,
+    hazardous_exposures_disclosed: profile.offsiteWork || profile.subcontractorsUsed,
+    foreign_operations: false,
+    criminal_activity_disclosed: false
+  };
+}
 
 export const oaklandSunriseProfile: BusinessProfile = {
   id: "biz-oakland-sunrise",
@@ -112,6 +162,24 @@ export const oaklandScoreTrend: ScoreTrendPoint[] = [
 
 export const oaklandInitialState: AppState = {
   profile: oaklandSunriseProfile,
+  underwritingProfile: {
+    rawFeatures: buildRawFeatures(oaklandSunriseProfile, oaklandProperty, {
+      priorClaims: ["Slip-and-fall claim reported two years ago."],
+      totalClaimsCount: 1,
+      claimsOpenCount: 0,
+      claimFrequencyRate: 0.17,
+      averageClaimSeverity: 12500,
+      lossRatioEstimate: 0.46,
+      financialStabilityFlag: "stable",
+      priorInsuranceStability: "stable",
+      priorInsuranceDeclined: false,
+      coverageGapMonths: 0,
+      carrierChangesLast5Years: 1,
+      yearsSinceLastClaim: 2
+    }),
+    zipAreaFeatures: null,
+    scoreResult: null
+  },
   claimsFinancial: {
     priorClaims: ["Slip-and-fall claim reported two years ago."],
     totalClaimsCount: 1,
@@ -206,6 +274,75 @@ export const bayBuildContractorState: AppState = {
     subcontractorsUsed: true,
     storesCustomerData: true,
     lastUpdatedAt: iso(today)
+  },
+  underwritingProfile: {
+    rawFeatures: buildRawFeatures(
+      {
+        id: "biz-baybuild",
+        businessName: "BayBuild Contractors",
+        businessType: "contractor",
+        legalEntityName: "BayBuild Contractors Inc.",
+        description: "General contractor for mixed residential and small commercial remodel projects across the Bay Area.",
+        operationsDescription:
+          "General contractor handling remodels with mixed self-perform and subcontracted scopes across residential and light commercial jobs.",
+        address: "370 Townsend St",
+        city: "San Francisco",
+        state: "CA",
+        zipCode: "94107",
+        naicsCode: "236220",
+        industryRiskTier: "high",
+        yearsInBusiness: 9,
+        annualRevenue: 1200000,
+        annualPremiumEstimate: 42000,
+        payroll: 420000,
+        employeeCount: 14,
+        multipleInsureds: true,
+        installServiceMix: "Framing / finish / MEP coordination",
+        customerFootTraffic: false,
+        offsiteWork: true,
+        vehiclesUsed: true,
+        subcontractorsUsed: true,
+        storesCustomerData: true,
+        lastUpdatedAt: iso(today)
+      },
+      {
+        effectiveBuildingAge: 14,
+        renovationYear: 2021,
+        constructionType: "Tilt-up concrete",
+        alarmCentralStation: true,
+        sprinklered: false,
+        propertyProtectionScore: 66,
+        locationHazardIndex: 40,
+        fireProtectionRating: 70,
+        distanceToFireStationMiles: 1.8,
+        distanceToHydrantFeet: 300,
+        premisesOwnershipStatus: "leased",
+        buildingQualityScore: 68,
+        zipCode: "94107",
+        naturalHazardLevel: "medium",
+        floodRisk: "medium",
+        wildfireRisk: "low",
+        severeWeatherRisk: "medium",
+        crimeOrTheftRisk: "medium",
+        explanation: "Contractor office and yard location with acceptable baseline hazards but meaningful equipment and off-site operational exposures."
+      },
+      {
+        priorClaims: [],
+        totalClaimsCount: 0,
+        claimsOpenCount: 0,
+        claimFrequencyRate: 0,
+        averageClaimSeverity: 0,
+        lossRatioEstimate: 0.22,
+        financialStabilityFlag: "stable",
+        priorInsuranceStability: "minor_gaps",
+        priorInsuranceDeclined: false,
+        coverageGapMonths: 1,
+        carrierChangesLast5Years: 2,
+        yearsSinceLastClaim: null
+      }
+    ),
+    zipAreaFeatures: null,
+    scoreResult: null
   },
   claimsFinancial: {
     priorClaims: [],

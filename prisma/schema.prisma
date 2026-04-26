@@ -8,11 +8,11 @@ datasource db {
 }
 
 model User {
-  id         String            @id @default(cuid())
-  email      String            @unique
+  id         String               @id @default(cuid())
+  email      String               @unique
   name       String?
-  createdAt  DateTime          @default(now())
-  updatedAt  DateTime          @updatedAt
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
   businesses BusinessProfile[]
 }
 
@@ -22,54 +22,42 @@ model BusinessProfile {
   businessName        String
   businessType        String
   legalEntityName     String
-  yearsInBusiness     Int
   description         String               @db.Text
   address             String
   zipCode             String
   state               String
-  annualRevenue       Float
-  payroll             Float
-  employeeCount       Int
-  customerFootTraffic Boolean
-  offsiteWork         Boolean
-  vehiclesUsed        Boolean
-  subcontractorsUsed  Boolean
-  storesCustomerData  Boolean
-  priorClaims         Json
-  renewalDate         DateTime
-  profileData         Json?
-  claimsFinancialData Json?
-  propertyData        Json?
-  cyberSafetyData     Json?
-  documentationData   Json?
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
 
   user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  locationRisk        LocationRisk?
+  underwritingProfiles UnderwritingProfile[]
   evidence            EvidenceDocument[]
   sourceDocuments     SourceDocument[]
   documentChunks      DocumentChunk[]
   documentFacts       DocumentFact[]
   timeline            TimelineEvent[]
-  recommendedActions  RecommendedAction[]
-  snapshots           ReadinessSnapshot[]
+  scoreRuns           ScoreRun[]
 
   @@index([userId, updatedAt])
 }
 
-model LocationRisk {
-  id                 String          @id @default(cuid())
-  businessId         String          @unique
-  zipCode            String
-  naturalHazardLevel String
-  floodRisk          String
-  wildfireRisk       String
-  severeWeatherRisk  String
-  crimeOrTheftRisk   String
-  explanation        String          @db.Text
+model UnderwritingProfile {
+  id                String          @id @default(cuid())
+  businessId        String
+  version           Int             @default(1)
+  rawFeatures       Json
+  zipAreaFeatures   Json?
+  acordFlags        Json?
+  synthetic         Boolean         @default(true)
+  completenessHint  Json?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
 
-  business           BusinessProfile @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business          BusinessProfile @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  scoreRuns         ScoreRun[]
+
+  @@index([businessId, createdAt])
+  @@unique([businessId, version])
 }
 
 model EvidenceDocument {
@@ -120,40 +108,62 @@ model SourceDocument {
 }
 
 model DocumentChunk {
-  id               String          @id @default(cuid())
-  businessId       String
-  sourceDocumentId String
-  chunkIndex       Int
-  content          String          @db.Text
-  tokenCount       Int             @default(0)
-  embedding        Float[]
-  semanticMetadata Json?
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
+  id                String          @id @default(cuid())
+  businessId        String
+  sourceDocumentId  String
+  chunkIndex        Int
+  content           String          @db.Text
+  tokenCount        Int             @default(0)
+  embedding         Float[]
+  semanticMetadata  Json?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
 
-  business         BusinessProfile @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  sourceDocument   SourceDocument  @relation(fields: [sourceDocumentId], references: [id], onDelete: Cascade)
+  business          BusinessProfile @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sourceDocument    SourceDocument  @relation(fields: [sourceDocumentId], references: [id], onDelete: Cascade)
 
   @@unique([sourceDocumentId, chunkIndex])
   @@index([businessId, createdAt])
 }
 
 model DocumentFact {
-  id               String          @id @default(cuid())
-  businessId       String
-  sourceDocumentId String
-  label            String
-  value            Json
-  confidence       Float?
+  id                 String          @id @default(cuid())
+  businessId         String
+  sourceDocumentId   String
+  label              String
+  value              Json
+  confidence         Float?
   provenanceChunkIds String[]
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
 
-  business         BusinessProfile @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  sourceDocument   SourceDocument  @relation(fields: [sourceDocumentId], references: [id], onDelete: Cascade)
+  business           BusinessProfile @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sourceDocument     SourceDocument  @relation(fields: [sourceDocumentId], references: [id], onDelete: Cascade)
 
   @@index([businessId, label])
   @@index([sourceDocumentId, createdAt])
+}
+
+model ScoreRun {
+  id                  String               @id @default(cuid())
+  businessId          String
+  underwritingProfileId String
+  engineVersion       String               @default("synthetic-v1")
+  compositeScore      Int
+  rawWeightedScore    Float
+  pillars             Json
+  contributionTable   Json
+  knockouts           Json
+  recommendations     Json
+  completeness        Json
+  synthetic           Boolean              @default(true)
+  createdAt           DateTime             @default(now())
+
+  business            BusinessProfile      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  underwritingProfile UnderwritingProfile  @relation(fields: [underwritingProfileId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, createdAt])
+  @@index([underwritingProfileId, createdAt])
 }
 
 model TimelineEvent {
@@ -170,49 +180,4 @@ model TimelineEvent {
   business         BusinessProfile  @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
   @@index([businessId, date])
-}
-
-model RecommendedAction {
-  id                  String          @id
-  businessId          String
-  title               String
-  description         String          @db.Text
-  priority            String
-  effort              String
-  expectedScoreImpact Int
-  status              String
-  category            String
-  createdAt           DateTime        @default(now())
-  updatedAt           DateTime        @updatedAt
-
-  business            BusinessProfile @relation(fields: [businessId], references: [id], onDelete: Cascade)
-
-  @@index([businessId, priority])
-}
-
-model ReadinessSnapshot {
-  id                    String          @id @default(cuid())
-  businessId            String
-  overallScore          Int
-  confidenceScore       Int
-  dataCompleteness      Int
-  classificationClarity Int
-  financialStability    Int
-  lossHistory           Int
-  propertyControls      Int
-  operationalControls   Int
-  locationContext       Int
-  operationalScore      Int?
-  claimsFinancialScore  Int?
-  propertyLocationScore Int?
-  cyberSafetyScore      Int?
-  documentationScore    Int?
-  explanation           String          @db.Text
-  strengths             Json
-  concerns              Json
-  createdAt             DateTime        @default(now())
-
-  business              BusinessProfile @relation(fields: [businessId], references: [id], onDelete: Cascade)
-
-  @@index([businessId, createdAt])
 }

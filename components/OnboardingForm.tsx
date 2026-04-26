@@ -29,6 +29,7 @@ export default function OnboardingForm() {
   const [pdfFiles, setPdfFiles] = useState<string[]>([]);
   const [photoFiles, setPhotoFiles] = useState<string[]>([]);
   const [chatInput, setChatInput] = useState("");
+  const [submitError, setSubmitError] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "assistant-1",
@@ -40,7 +41,7 @@ export default function OnboardingForm() {
       id: "assistant-2",
       role: "assistant",
       content:
-        "Upload PDFs and photos on the left, then add the structured fields underneath. This area is ready for future conversational assistance."
+        "Upload PDFs, CSVs, and photos on the left, then add the structured fields underneath. This area is ready for future conversational assistance."
     }
   ]);
 
@@ -88,6 +89,7 @@ export default function OnboardingForm() {
 
   const goToDashboard = async () => {
     setSubmitting(true);
+    setSubmitError("");
     try {
       const response = await fetch("/api/businesses", {
         method: "POST",
@@ -150,11 +152,14 @@ export default function OnboardingForm() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to save onboarding business.");
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error || "Failed to save onboarding business.");
       }
 
       const data = (await response.json()) as { id: string };
       router.push(`/dashboard?id=${data.id}`);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Failed to save onboarding business.");
     } finally {
       setSubmitting(false);
     }
@@ -215,6 +220,7 @@ export default function OnboardingForm() {
                         Submit
                       </button>
                     </div>
+                    {submitError ? <p className="mt-3 text-sm text-rose-600">{submitError}</p> : null}
                   </div>
                 </div>
               </div>
@@ -235,7 +241,7 @@ export default function OnboardingForm() {
                     <p className="mb-1 text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Business Details</p>
                     <h2 className="text-2xl font-semibold tracking-tight text-slate-900">Complete your onboarding form</h2>
                     <p className="mt-1 max-w-2xl text-sm text-slate-600">
-                      Upload supporting files and fill in the core business details. We can wire this into backend processing later.
+                      Upload supporting PDFs, CSVs, and photos, then fill in the core business details. We can wire this into backend processing later.
                     </p>
                   </div>
                   <button
@@ -252,11 +258,11 @@ export default function OnboardingForm() {
                     <FieldLabel>Uploads</FieldLabel>
                     <div className="grid gap-4 md:grid-cols-2">
                       <label className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
-                        <span className="mb-1 block font-medium text-slate-800">PDF documents</span>
+                        <span className="mb-1 block font-medium text-slate-800">PDF and CSV documents</span>
                         <span className="mb-3 block text-sm text-slate-500">Policies, loss runs, financial statements, licenses</span>
                         <input
                           type="file"
-                          accept=".pdf"
+                          accept=".pdf,.csv,text/csv,application/vnd.ms-excel"
                           multiple
                           onChange={(event) => setPdfFiles(Array.from(event.target.files ?? []).map((file) => file.name))}
                           className="block w-full text-sm text-slate-500 file:mr-3 file:rounded-full file:border-0 file:bg-slate-900 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white"
@@ -314,6 +320,7 @@ export default function OnboardingForm() {
                       {submitting ? "Saving..." : "Get your InsuroScore"}
                     </button>
                   </div>
+                  {submitError ? <p className="text-sm text-rose-600">{submitError}</p> : null}
                 </div>
               </div>
 
