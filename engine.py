@@ -112,8 +112,8 @@ def derive_features(raw: dict) -> dict:
 
     # --- Claims & Financial ---
     tcc = raw.get("total_claims_count")
-    yrs = raw.get("loss_run_years", 5)
-    d["claim_frequency_rate"] = (tcc / yrs) if tcc is not None else None
+    yrs = raw.get("loss_run_years") or 5
+    d["claim_frequency_rate"] = (tcc / yrs) if tcc is not None and yrs else None
 
     tcp = raw.get("total_claims_paid")
     if tcc is not None and tcc > 0 and tcp is not None:
